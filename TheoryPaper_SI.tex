@@ -45,6 +45,33 @@
 
 %\setcounter{page}{1}
 \section{Mathematical and Computational Details}
+\subsection{\edit{Function with desired properties [rename + cleanup this section]}}
+
+
+This is a nice mathematical property and it seems like a desirable quality for any fitness function we might want to use. Unfortunately (as I will show), this class of functions is the only class of function that has this property, so we should think more deeply about if we think this is a necessary property for a fitness function (and perhaps what assumptions about the space we're implicitly making by using this function).
+
+Consider a space with 2 dimensions. The ancestor and mutant both lie solely in the first dimension with distance $ x_A $ and $ x_M $ from the optimum's projection in this dimension. The optimum also has a non-zero value in the second dimension with distance $ y $ from from the value of the mutant and ancestor.
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=4in]{figures/distance_figure.pdf}
+\end{center}
+\caption{{\bf Graphical illustration of distance properties.} 
+.}
+\end{figure}
+
+Inherent in the model is that the fitness function is some function of Euclidean distance in phenotype space, so let's calculate the distance of the mutant and ancestor from the optimum:
+\[ d_{M} = \sqrt{x_{M}^2 + y^2}  \qquad d_{A} = \sqrt{x_{A}^2 + y^2} \]
+
+In general, relative fitness is given by:
+\[ s = \frac{w_{M} - w_{A}}{w_{A}} = \frac{w_{M}}{w_{A}} -1 \]
+
+where  $ w_M = f( d_{M} ) $ is some function of the distance from the optimum (with same function for the ancestor). Essentially, we want to find functions $ f $ such that there is no $ y $ in the simplified expression for $ s $:
+\[ s = \frac{w_{M}}{w_{A}} -1 =  \frac{f\left( \sqrt{x_{M}^2 + y^2}  \right)}{f\left( \sqrt{x_{A}^2 + y^2}  \right)} -1 \]
+One thing to notice is that we cannot keep \( y \) in the denominator. If \( y \) is kept in the denominator, it will always participate in scaling fitness (and thus have an influence on relative fitness), so we need a function that removes the distance from the ancestor such that \( f(M)/f(A) = f(cM+bA) \). There is only one such class of functions \edit{FIND THIS PROOF/CITATION}, which is exponential, meaning our function must have the form \( f(M) = \exp(g(M)) \). This gives us:
+\( s = \exp\left[  g\left(  \sqrt{x_{M}^2 + y^2}  \right) -  g\left(  \sqrt{x_{A}^2 + y^2} \right)   \right] \)
+We can now see from this, that the \( g \) function must be quadratic to remove the square root and the \( y \) can cancel itself out. This means that in order to satisfy the property of not depending on the extra dimension where the mutants do not differ from the ancestor, we need a function that is the gaussian of the squared distance from the optimum (which the Gaussian is). 
+
 \subsection{Derivation of Score Metric}
 
 To derive the score (eq. 1) used in the main text, we assume that fitness for mutant $ j $ at position $ \vec{x}_j $ in condition $ k $ is given by:
