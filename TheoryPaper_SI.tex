@@ -45,22 +45,28 @@
 
 %\setcounter{page}{1}
 \section{Mathematical and Computational Details}
-\subsection{\edit{Function with desired properties [rename + cleanup this section]}}
+\subsection{Guassian fitness function uniquely satisfies desired properties}
 
+One important consideration of our use of fitness to identify phenotypes is the mapping between the two, in particular the fitness function. There are many choices for such a function, each with various properties that make them appropriate and preferred in certain contexts. \edit{Some sentences here about use in various cases - linear, gaussian, others?}. 
 
-This is a nice mathematical property and it seems like a desirable quality for any fitness function we might want to use. Unfortunately (as I will show), this class of functions is the only class of function that has this property, so we should think more deeply about if we think this is a necessary property for a fitness function (and perhaps what assumptions about the space we're implicitly making by using this function).
+For our particular case, identifying fitness-relevant phenotypes, one particular property that seems desirable is that a trait only contributes to relative fitness if the ancestor and mutant differ in their trait value for that particular trait, since this means we will only identify differing traits when using fitness do identify them. As we show below, if fitness is a function of Euclidean distance in phenotype space, then the only class of functions that satisfies this property is that of an exponential function of squared distance, such as the Gaussian function.
 
-Consider a space with 2 dimensions. The ancestor and mutant both lie solely in the first dimension with distance $ x_A $ and $ x_M $ from the optimum's projection in this dimension. The optimum also has a non-zero value in the second dimension with distance $ y $ from from the value of the mutant and ancestor.
+% In our case, one property that may desirable is that for a phenotype to have an impact on relative fitness between the ancestor and a mutant, the ancestor and mutant must differ in their values of that phenotype. This allows us to restrict our analysis to only phenotypes that differ. Mathematically, this property means that phenotypes are independent in their contribution to fitness
+%
+%This is a nice mathematical property and it seems like a desirable quality for any fitness function we might want to use. Unfortunately (as I will show), this class of functions is the only class of function that has this property, so we should think more deeply about if we think this is a necessary property for a fitness function (and perhaps what assumptions about the space we're implicitly making by using this function).
+
+Consider a phenotype space with 2 dimensions. Let the ancestor and mutant both lie solely in the first dimension with distance $ x_A $ and $ x_M $ from the optimum's projection in this dimension. The optimum also has a non-zero value $ y $ in the second dimension (without loss of generality, we can set 0 to be the value shared by the ancestor and mutant in this dimension) (see Figure 1). 
 
 \begin{figure}[ht]
 \begin{center}
 \includegraphics[width=4in]{figures/distance_figure.pdf}
 \end{center}
-\caption{{\bf Graphical illustration of distance properties.} 
-.}
+\caption{{\bf Graphical illustration of distance properties.} The ancestor (black diamond) and mutant (red triangle) differ in their trait value in the first dimension but not the second. The condition's optimum (gray circle) differs from both the ancestor and mutant in both dimensions.}
 \end{figure}
 
-Inherent in the model is that the fitness function is some function of Euclidean distance in phenotype space, so let's calculate the distance of the mutant and ancestor from the optimum:
+
+
+Let the fitness function be some function of Euclidean distance in phenotype space. We can calculate the Euclidean distance of the mutant and ancestor from the optimum:
 \[ d_{M} = \sqrt{x_{M}^2 + y^2}  \qquad d_{A} = \sqrt{x_{A}^2 + y^2} \]
 
 In general, relative fitness is given by:
@@ -68,9 +74,9 @@ In general, relative fitness is given by:
 
 where  $ w_M = f( d_{M} ) $ is some function of the distance from the optimum (with same function for the ancestor). Essentially, we want to find functions $ f $ such that there is no $ y $ in the simplified expression for $ s $:
 \[ s = \frac{w_{M}}{w_{A}} -1 =  \frac{f\left( \sqrt{x_{M}^2 + y^2}  \right)}{f\left( \sqrt{x_{A}^2 + y^2}  \right)} -1 \]
-One thing to notice is that we cannot keep \( y \) in the denominator. If \( y \) is kept in the denominator, it will always participate in scaling fitness (and thus have an influence on relative fitness), so we need a function that removes the distance from the ancestor such that \( f(M)/f(A) = f(cM+bA) \). There is only one such class of functions \edit{FIND THIS PROOF/CITATION}, which is exponential, meaning our function must have the form \( f(M) = \exp(g(M)) \). This gives us:
-\( s = \exp\left[  g\left(  \sqrt{x_{M}^2 + y^2}  \right) -  g\left(  \sqrt{x_{A}^2 + y^2} \right)   \right] \)
-We can now see from this, that the \( g \) function must be quadratic to remove the square root and the \( y \) can cancel itself out. This means that in order to satisfy the property of not depending on the extra dimension where the mutants do not differ from the ancestor, we need a function that is the gaussian of the squared distance from the optimum (which the Gaussian is). 
+One thing to notice is that we cannot keep \( y \) in the denominator. If \( y \) is kept in the denominator, it will always participate in scaling fitness (and thus have an influence on relative fitness), so we need a function that removes the distance from the ancestor such that \( f(d_M)/f(d_A) = f(d_M-d_A) \). There is only one such class of real-valued, positive functions that has this property, which is the exponential \edit{[this is a classic Real Analysis course proof - what's a good citation?]}, meaning our function must have the form \( f(d_M) = \exp(g(d_M)) \). This gives us:
+\( s = \exp\left[  g\left(  \sqrt{x_{M}^2 + y^2}  \right) -  g\left(  \sqrt{x_{A}^2 + y^2} \right)   \right] \).
+We can now see that the \( g \) function must be quadratic to remove the square root allow for \( y \) itself to cancel out. This means that in order to satisfy the property of not depending on the extra dimension where the mutants do not differ from the ancestor, we need an absolute fitness function that is the exponential of the squared distance from the optimum - the Gaussian function satisfies this property.
 
 \subsection{Derivation of Score Metric}
 
