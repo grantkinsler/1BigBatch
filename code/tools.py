@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 from scipy.spatial import distance
 from scipy.stats.mstats import gmean
+from sklearn.linear_model import LinearRegression
 import copy
+
 
 
 
@@ -43,6 +45,10 @@ def bic(ll,n,k):
     return np.log(n)*k - 2 * ll
 
 def bic1(data,fit,rank):
+
+    """ 
+    Bayesian Information Criterion 1 from Bai and Ng 2002 and tested by Owen and Perry 2009
+    """
     
     k = float(rank)
     m = float(data.shape[0])
@@ -51,6 +57,10 @@ def bic1(data,fit,rank):
     return np.log(np.linalg.norm(data-fit)**2)  + k*(m+n)/(m*n)*np.log(m*n/(m+n))
 
 def bic2(data,fit,rank):
+
+    """ 
+    Bayesian Information Criterion 2 from Bai and Ng 2002 and tested by Owen and Perry 2009
+    """
     
     k = float(rank)
     m = float(data.shape[0])
@@ -60,6 +70,10 @@ def bic2(data,fit,rank):
     return np.log(np.linalg.norm(data-fit)**2)  + k*(m+n)/(m*n)*np.log(C**2)
 
 def bic3(data,fit,rank):
+
+    """ 
+    Bayesian Information Criterion 3 from Bai and Ng 2002 and tested by Owen and Perry 2009
+    """
     
     k = float(rank)
     m = float(data.shape[0])
@@ -79,80 +93,66 @@ def var_explained(data,model):
     
     return 1 - ss_res/ss_tot, ss_res, ss_tot
 
-def SVD_condition_predictions(data,old_c,new_c,n_mutants,n_conditions,permuted_mutants=False,permuted_conditions=False,mse=False):
+def SVD_condition_predictions(data,old_c,new_c,n_mutants,permuted_mutants=False,permuted_conditions=False,mse=False):
     
     """ Predicting new conditions from SVD fit on old conditions using ALL mutants """
 
-    max_rank = int(len(old_c))
+    old_m = range(n_mutants)
+    max_rank = len(old_c)
 
-    mutants = [i for i in range(n_mutants)]
+    if permuted_mutants and permuted_conditions:
+        this_data = copy.copy(data)
+        this_data[old_m,old_c] = np.random.permutation(this_data[old_m,old_c].ravel()).reshape(len(old_m),len(old_c))
+        subset = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].ravel()
+
+    elif permuted_mutants: ### I think this is named wrong/confusingly - this is holding mutants in place and permuting the conditions
+        this_data = copy.copy(data)
+        for mut in old_m:
+            this_data[mut,old_c] = np.random.permutation(this_data[mut,old_c])
+
+    elif permuted_conditions: ### I think this is named wrong/confusingly - this is holding conditions in place and permuting the mutants
+
+        this_data = np.swapaxes(copy.copy(data),0,1)
+        for cond in old_c:
+            this_data[cond,old_m] = np.random.permutation(this_data[cond,old_m])
+        this_data = np.swapaxes(this_data,0,1)
+
+    else:
+        this_data = copy.copy(data)
 
 
-    both_old = this_data[np.repeat(n_mutants,len(old_c)),np.tile(old_c,n_mutants)].reshape(len(old_m),n_mutants)
+    old_fitness = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].reshape(len(old_m),len(old_c))
+    new_fitness = this_data[np.repeat(old_m,len(new_c)),np.tile(new_c,len(old_m))].reshape(len(old_m),len(new_c))
+    
+    U, s2, V2 = np.linalg.svd(old_fitness)
 
-    U2, s2, V2 = np.linalg.svd(both_old)
-                   
-    cond_new = this_data[np.repeat(mutants,len(new_c)),np.tile(new_c,n_mutants)].reshape(n_mutants,len(new_c))
+    # old_condition_weights = np.dot(np.diag(s2),V2)
 
+    reg = LinearRegression(fit_intercept=False).fit(U[:,:s2.shape[0]],new_fitness)
 
+    new_condition_weights = reg.coef_.swapaxes(0,1)
 
-    for fold in folds:
-        new_m = fold[0]
-        new_c = fold[1]
-        old_m = sorted([i for i in range(n_mutants) if i not in new_m])
-        old_c = sorted([i for i in range(n_conditions) if i not in new_c])
-        rank_fit = []
-        true_fit = []
+    rank_fit = []
+    rank_fit_by_condition = []
 
-        if permuted_mutants and permuted_conditions:
-            this_data = copy.copy(data)
-            this_data[old_m,old_c] = np.random.permutation(this_data[old_m,old_c].ravel()).reshape(len(old_m),len(old_c))
-            subset = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].ravel()
+    for rank in range(1,max_rank+1):
+        rank_fit_by_condition.append([])
 
-        elif permuted_mutants:
-            this_data = copy.copy(data)
-            for mut in old_m:
-                this_data[mut,old_c] = np.random.permutation(this_data[mut,old_c])
-
-        elif permuted_conditions:
-
-            this_data = np.swapaxes(copy.copy(data))
-            for cond in old_c:
-                this_data[cond,old_m] = np.random.permutation(this_data[cond,old_m])
-            this_data = np.swapaxes(this_data,0,1)
-
+        predicted_new = np.dot(U[:,:rank],new_condition_weights[:rank,:])
+        if mse:
+            rank_fit.append(np.sum(np.square(new_fitness-predicted_new)))
         else:
-            this_data = copy.copy(data)
+            rank_fit.append(var_explained(new_fitness,predicted_new)[0])
 
-
-
-        both_old = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].reshape(len(old_m),len(old_c))
-
-
-        U2, s2, V2 = np.linalg.svd(both_old)
-        mut_new = this_data[np.repeat(new_m,len(old_c)),np.tile(old_c,len(new_m))].reshape(len(new_m),len(old_c))                    
-        cond_new = this_data[np.repeat(old_m,len(new_c)),np.tile(new_c,len(old_m))].reshape(len(old_m),len(new_c))
-        both_new = this_data[np.repeat(new_m,len(new_c)),np.tile(new_c,len(new_m))].reshape(len(new_m),len(new_c))
-#         both_true = truth[np.repeat(new_m,len(new_c)),np.tile(new_c,len(new_m))].reshape(len(new_m),len(new_c))
-
-        for rank in range(1,max_rank+1):
-
-            new_s = np.asarray(list(s2[:rank]) + list(np.zeros(s2[rank:].shape)))
-            S2 = np.zeros((U2.shape[0],V2.shape[0]))
-            S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
-
-            D_hat = np.dot(U2[:,:rank],np.dot(S2,V2)[:rank,:])
-            A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+        for k in range(len(new_c)):
             if mse:
-                rank_fit.append(np.sum(np.square(both_new-A_hat)))
-#                 true_fit.append(np.sum(np.square(both_true-A_hat)))
+                rank_fit_by_condition[rank-1].append(np.sum(np.square(new_fitness[:,k]-predicted_new[:,k])))
             else:
-                rank_fit.append(var_explained(both_new,A_hat)[0])
-#                 true_fit.append(var_explained(both_true,A_hat)[0])
-        all_folds = all_folds + rank_fit
-#         true_folds = true_folds + true_fit
-        
-    return all_folds
+                rank_fit_by_condition[rank-1].append(var_explained(new_fitness[:,k],predicted_new[:,k])[0])
+
+
+
+    return rank_fit, rank_fit_by_condition
 
 
 def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=False,permuted_conditions=False,mse=False):
@@ -180,8 +180,11 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
 
     max_rank = int((n_folds-1)*n_conditions/n_folds)
     all_folds = np.zeros(max_rank)
-#     true_folds = np.zeros(max_rank)
-    for fold in folds:
+
+    fold_fits = []
+    fold_fits_by_condition = []
+    for f,fold in enumerate(folds):
+        fold_fits_by_condition.append([])
         new_m = fold[0]
         new_c = fold[1]
         old_m = sorted([i for i in range(n_mutants) if i not in new_m])
@@ -210,15 +213,12 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
             this_data = copy.copy(data)
 
 
-
         both_old = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].reshape(len(old_m),len(old_c))
-
 
         U2, s2, V2 = np.linalg.svd(both_old)
         mut_new = this_data[np.repeat(new_m,len(old_c)),np.tile(old_c,len(new_m))].reshape(len(new_m),len(old_c))                    
         cond_new = this_data[np.repeat(old_m,len(new_c)),np.tile(new_c,len(old_m))].reshape(len(old_m),len(new_c))
         both_new = this_data[np.repeat(new_m,len(new_c)),np.tile(new_c,len(new_m))].reshape(len(new_m),len(new_c))
-#         both_true = truth[np.repeat(new_m,len(new_c)),np.tile(new_c,len(new_m))].reshape(len(new_m),len(new_c))
 
         for rank in range(1,max_rank+1):
 
@@ -230,14 +230,21 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
             A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
             if mse:
                 rank_fit.append(np.sum(np.square(both_new-A_hat)))
-#                 true_fit.append(np.sum(np.square(both_true-A_hat)))
+
             else:
                 rank_fit.append(var_explained(both_new,A_hat)[0])
-#                 true_fit.append(var_explained(both_true,A_hat)[0])
+
+            fold_fits_by_condition[f].append([])
+            for k in range(len(new_c)):
+                if mse:
+                    fold_fits_by_condition[f][rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
+                else:
+                    fold_fits_by_condition[f][rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
+
         all_folds = all_folds + rank_fit
-#         true_folds = true_folds + true_fit
+        fold_fits.append(rank_fit)
         
-    return all_folds
+    return all_folds, fold_fits, fold_fits_by_condition
 
 
 def SVD_fits(data,mse=False):
@@ -347,23 +354,25 @@ def make_folds(n_mutants,n_conditions,n_folds):
     return folds
         
         
-def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False):
+def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False,show_folds=True):
     
     n_mutants = this_f.shape[0]
     n_conditions = this_f.shape[1]
     
     n_folds = len(folds)
 
-    real_fits = SVD_predictions(this_f,folds,n_mutants,n_conditions,n_folds,mse=mse)
+    real_fits, all_fold_fits, by_condition = SVD_predictions(this_f,folds,n_mutants,n_conditions,n_folds,mse=mse)
     real_fits = real_fits/n_folds
     
     max_rank = len(real_fits)
-#         true_fits = true_fits/n_folds
+    if show_folds:
+        for fold in range(n_folds):
+            plt.plot(range(1,max_rank+1),all_fold_fits[fold][0],color='gray',alpha=0.3)
 
     for perm in range(n_permutations):
         permuted_mutants = copy.copy(this_f)
 
-        perm_fits = SVD_predictions(permuted_mutants,folds,n_mutants,n_conditions,n_folds,permuted_mutants=True,mse=mse)
+        perm_fits = SVD_predictions(permuted_mutants,folds,n_mutants,n_conditions,n_folds,permuted_mutants=True,mse=mse)[0]
         perm_fits = perm_fits/n_folds
 
         plt.plot(range(1,max_rank+1),perm_fits,color='r',alpha=0.1)
@@ -374,6 +383,7 @@ def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False):
 
 #     plt.axvline(x=d_true,color='k',linestyle=':')
     plt.axhline(np.max(real_fits),color='k',linestyle=':')
+
     print(np.max(real_fits))
     
 #     plt.title(f'{err_names[e]} ({err:.1})')

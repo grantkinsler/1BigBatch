@@ -12,7 +12,7 @@ from scipy.stats import norm
 
 
 def inferFitness(barcodes,cycleTimes,allReads,outputFolder=None,experimentName=None,neutralBarcodes=None,
-                 multNoiseThresh=3e3,zCutoff=2.7,multNoiseBase=0.1,use_all_neutral=False,lowCoverageThresh=5e5,sparsityThresh=None,firstPass=True):
+                 multNoiseThresh=3e3,zCutoff=2.7,multNoiseBase=0.1,use_all_neutral=False,lowCoverageThresh=5e5,sparsityThresh=None,firstPass=True,useMultNoise=True):
     """
     inferFitness - main fitness inference function. Expects barcodes, cycle times, and reads; returns dictionary of
     fitness inference data for all replicates. See Venkataram et. al. Cell 2016 for details of fitness assay algorithm.
@@ -78,7 +78,9 @@ def inferFitness(barcodes,cycleTimes,allReads,outputFolder=None,experimentName=N
     # print('neutrals inside', len(neutralIndices))
 
     # estimate multiplicative noise
-    multNoiseParams = inferMultNoise(filteredReads,filteredCycleTimes,multNoiseThresh,multNoiseBase)
+    
+    multNoiseParams = inferMultNoise(filteredReads,filteredCycleTimes,multNoiseThresh,multNoiseBase,useMultNoise)
+
 
     # infer fitnesses
 
@@ -251,7 +253,7 @@ def meanVarAndNeutrals(neutralIndices,replicateReads,zCutoff,cycleTimes,use_all_
 
     return meanFitness,kappas,newNeutralIndices,zScores
 
-def inferMultNoise(allReads,allCycleTimes,multNoiseThresh,multNoiseBase):
+def inferMultNoise(allReads,allCycleTimes,multNoiseThresh,multNoiseBase,useMultNoise):
     """
     inferMultNoise - infer multiplicative noise parameter using high frequency lineages
 
@@ -298,31 +300,33 @@ def inferMultNoise(allReads,allCycleTimes,multNoiseThresh,multNoiseBase):
                 mappedTimePoints[repName] = mappedTimePoints[repName][0:-1]
             # compute noise parameters
             calculatedMultNoise = np.zeros(len(totalTimes)-1)
-            for initIdx,initTime in enumerate(totalTimes[0:-1]):
-                initReads = np.zeros((numLineages,len(repNames)))
-                finalReads = np.zeros((numLineages,len(repNames)))
-                repIdx = 0
-                for repName in repNames:
-                    initReads[:,repIdx] = allReads[repName][:,int(timeIndices[repName][initIdx])]
-                    finalReads[:,repIdx] = allReads[repName][:,int(timeIndices[repName][initIdx])+1]
-                    repIdx = repIdx+1
-                initR = np.sum(initReads,axis=0)
-                finalR = np.sum(finalReads,axis=0)
+            if useMultNoise:
+                for initIdx,initTime in enumerate(totalTimes[0:-1]):
+                    initReads = np.zeros((numLineages,len(repNames)))
+                    finalReads = np.zeros((numLineages,len(repNames)))
+                    repIdx = 0
+                    for repName in repNames:
+                        initReads[:,repIdx] = allReads[repName][:,int(timeIndices[repName][initIdx])]
+                        finalReads[:,repIdx] = allReads[repName][:,int(timeIndices[repName][initIdx])+1]
+                        repIdx = repIdx+1
+                    initR = np.sum(initReads,axis=0)
+                    finalR = np.sum(finalReads,axis=0)
 
-                filteredIdx = np.mean(initReads,axis=1)>multNoiseThresh
-                # if nothing passes filter, use default value
-                if sum(filteredIdx)==0:
-                    calculatedMultNoise[initIdx] = multNoiseBase
-                else:
-                    # filtered frequencies
-                    initFreq = initReads[filteredIdx,:]/initR
-                    finalFreq = finalReads[filteredIdx,:]/finalR
-                    # print(initFreq,finalFreq)
-                    # Variance of log slopes
-                    logSlopes = np.log(finalFreq)-np.log(initFreq)
-                    # print(logSlopes)
-                    # changed to nanmean 
-                    calculatedMultNoise[initIdx] = np.sqrt(np.nanmean(np.nanvar(logSlopes,axis=1,ddof=1)))
+                    filteredIdx = np.mean(initReads,axis=1)>multNoiseThresh
+                    # if nothing passes filter, use default value
+                    if sum(filteredIdx)==0:
+                        calculatedMultNoise[initIdx] = multNoiseBase
+                    else:
+                        # filtered frequencies
+                        initFreq = initReads[filteredIdx,:]/initR
+                        finalFreq = finalReads[filteredIdx,:]/finalR
+                        # print(initFreq,finalFreq)
+                        # Variance of log slopes
+                        logSlopes = np.log(finalFreq)-np.log(initFreq)
+                        # print(logSlopes)
+                        # changed to nanmean 
+                        calculatedMultNoise[initIdx] = np.sqrt(np.nanmean(np.nanvar(logSlopes,axis=1,ddof=1)))
+            
             for repName in repNames:
                 multNoiseParams[repName] = calculatedMultNoise[mappedTimePoints[repName].astype('int')]
         else:
