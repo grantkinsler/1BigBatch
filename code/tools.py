@@ -6,9 +6,12 @@ from scipy.stats import pearsonr
 from scipy.spatial import distance
 from scipy.stats.mstats import gmean
 from sklearn.linear_model import LinearRegression
+import itertools
 import copy
 
 
+def flatten(list2d):
+    return list(itertools.chain.from_iterable(list2d))
 
 
 def jitter_point(mean,std=0.15):
@@ -183,8 +186,12 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
 
     fold_fits = []
     fold_fits_by_condition = []
+    fold_fits_by_mutant = []
     for f,fold in enumerate(folds):
+
         fold_fits_by_condition.append([])
+        fold_fits_by_mutant.append([])
+
         new_m = fold[0]
         new_c = fold[1]
         old_m = sorted([i for i in range(n_mutants) if i not in new_m])
@@ -235,17 +242,24 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
                 rank_fit.append(var_explained(both_new,A_hat)[0])
 
             fold_fits_by_condition[f].append([])
+            fold_fits_by_mutant[f].append([])
+            
             for k in range(len(new_c)):
                 if mse:
                     fold_fits_by_condition[f][rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
                 else:
                     fold_fits_by_condition[f][rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
+            for j in range(len(new_m)):
+                if mse:
+                    fold_fits_by_mutant[f][rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
+                else:
+                    fold_fits_by_mutant[f][rank-1].append(var_explained(both_new[j,:],A_hat[j,:])[0])
+
 
         all_folds = all_folds + rank_fit
         fold_fits.append(rank_fit)
         
-    return all_folds, fold_fits, fold_fits_by_condition
-
+    return all_folds, fold_fits, fold_fits_by_condition, fold_fits_by_mutant
 
 def SVD_fits(data,mse=False):
     U, s, V = np.linalg.svd(data)
