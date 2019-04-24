@@ -9,6 +9,44 @@ from sklearn.linear_model import LinearRegression
 import itertools
 import copy
 
+mutant_colorset = {'CYR1':'#cab2d6', # light purple
+                 'Diploid':'#fb9a99', # light red
+                 'Diploid + Chr11Amp':'#e31a1c', # dark red for adaptive diploids
+                 'Diploid + Chr12Amp':'#e31a1c',
+                 'Diploid + IRA1':'#e31a1c',
+                 'Diploid + IRA2':'#e31a1c',
+                 'GPB1':'#b2df8a',  # light green
+                 'GPB2':'#33a02c',  # dark green
+                 'IRA1':'#1f78b4', # dark blue
+                 'IRA2':'#a6cee3', # light blue
+                 'NotSequenced':'gray',
+                 'PDE2':'#ff7f00',  # dark orange
+                 'RAS2':'#ffff99', # yellow
+                 'SCH9':'#6a3d9a', # dark purple for TOR mutants
+                 'TFS1':'#6a3d9a',
+                 'TOR1':'#6a3d9a',
+                 'KOG1':'#6a3d9a', 
+                 'other':'k'}
+
+# old_colorset = {condition:sns.color_palette('Accent',len(old_conditions.keys()))[i] for i,condition in enumerate(old_conditions.keys())}
+# bigbatch_colorset = {condition:sns.color_palette('Paired',len(bigbatch_conditions.keys()))[i] for i,condition in enumerate(bigbatch_conditions.keys())}
+
+condition_colorset = {'13': (0.9921568627450981, 0.7529411764705882, 0.5254901960784314),
+ '18': (1.0, 1.0, 0.6),
+ '1BB_0.2MKCl': (0.8901960784313725, 0.10196078431372549, 0.10980392156862745),
+ '1BB_0.2MNaCl': (0.984313725490196, 0.6039215686274509, 0.6),
+ '1BB_0.5%Raf': (1.0, 0.4980392156862745, 0.0),
+ '1BB_0.5MKCl': (0.9921568627450981, 0.7490196078431373, 0.43529411764705883),
+ '1BB_1%Gly': (0.792156862745098, 0.6980392156862745, 0.8392156862745098),
+ '1BB_1.4%Gluc': (0.6980392156862745, 0.8745098039215686, 0.5411764705882353),
+ '1BB_1.8%Gluc': (0.2, 0.6274509803921569, 0.17254901960784313),
+ '1BB_Baffle': (0.12156862745098039, 0.47058823529411764, 0.7058823529411765),
+ '1BB_M3': (0.6509803921568628, 0.807843137254902, 0.8901960784313725),
+ '20': (0.2196078431372549, 0.4235294117647059, 0.6901960784313725),
+ '21': (0.9411764705882353, 0.00784313725490196, 0.4980392156862745),
+ '23': (0.7490196078431373, 0.3568627450980392, 0.09019607843137253),
+ '3': (0.4980392156862745, 0.788235294117647, 0.4980392156862745),
+ '6': (0.7450980392156863, 0.6823529411764706, 0.8313725490196079)}
 
 def flatten(list2d):
     return list(itertools.chain.from_iterable(list2d))
@@ -188,6 +226,8 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
     fold_fits_by_condition = []
     fold_fits_by_mutant = []
     for f,fold in enumerate(folds):
+
+        
 
         fold_fits_by_condition.append([])
         fold_fits_by_mutant.append([])
@@ -405,3 +445,21 @@ def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False,s
     plt.xlim(0.5,n_conditions+0.5)
 
     return ax
+
+def plot_mutant_components(ax,U,this_data,x_component,y_component,mutant_colorset):
+
+    plt.title('Mutant Components')
+    already_plotted = []
+    for mut in range(U.shape[0]):
+        plt.scatter(U[mut,x_component],U[mut,y_component],color=mutant_colorset[mut],alpha=0.3,
+                    label=f"{this_data['gene'].values[mut]}" if this_data['gene'].values[mut] not in already_plotted else '_nolegend_')
+        already_plotted.append(this_data['gene'].values[mut])
+    plt.xlabel(f'Component {x_component+1}')
+    plt.ylabel(f'Component {y+component+1}')
+    plt.legend(bbox_to_anchor=(1.0,1.0),ncol=2)
+    ax.set_aspect('equal','box')
+    ax.grid(True, which='both')
+    sns.despine(ax=ax, offset=0) 
+
+    return ax
+
