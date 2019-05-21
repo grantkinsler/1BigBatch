@@ -36,6 +36,7 @@ condition_colorset = {'13': (0.9921568627450981, 0.7529411764705882, 0.525490196
  '1BB_0.2MKCl': (0.8901960784313725, 0.10196078431372549, 0.10980392156862745),
  '1BB_0.2MNaCl': (0.984313725490196, 0.6039215686274509, 0.6),
  '1BB_0.5%Raf': (1.0, 0.4980392156862745, 0.0),
+ '1BB_1%Raf': (0.0, 0.0, 0.0),
  '1BB_0.5MKCl': (0.9921568627450981, 0.7490196078431373, 0.43529411764705883),
  '1BB_1%Gly': (0.792156862745098, 0.6980392156862745, 0.8392156862745098),
  '1BB_1.4%Gluc': (0.6980392156862745, 0.8745098039215686, 0.5411764705882353),
@@ -55,6 +56,40 @@ def flatten(list2d):
 def jitter_point(mean,std=0.15):
     return np.random.normal(mean,std)
 
+
+def downsample_single(set1,target):
+    
+    down = np.zeros((set1.shape[0],set1.shape[1]))
+    for col in range(set1.shape[1]):
+    
+        total1 = np.sum(set1[:,col])
+    
+        if total1 < target:
+            down[:,col] = set1[:,col]
+        else:
+            down[:,col] = np.random.multinomial(target,set1[:,col]/total1,1)
+
+    return down
+    
+def downsample(set1,set2,target='default'):
+    
+    total1 = np.sum(set1)
+    total2 = np.sum(set2)
+    
+    if target == 'default':
+        target = min([total1,total2])
+    
+    if total1 == target:
+        down1 = set1
+    else:
+        down1 = np.random.multinomial(target,set1/total1,1)
+    
+    if total2 == target:
+        down2 = set2
+    else:
+        down2 = np.random.multinomial(target,set2/total2,1)
+    
+    return down1, down2
 
 def calculate_fitness(X,O,Ancestor):
     
@@ -225,9 +260,10 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
     fold_fits = []
     fold_fits_by_condition = []
     fold_fits_by_mutant = []
+    mean_fits =[]
     for f,fold in enumerate(folds):
 
-        
+
 
         fold_fits_by_condition.append([])
         fold_fits_by_mutant.append([])
@@ -238,6 +274,8 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
         old_c = sorted([i for i in range(n_conditions) if i not in new_c])
         rank_fit = []
         true_fit = []
+
+
 
         if permuted_mutants and permuted_conditions:
             this_data = copy.copy(data)
@@ -262,10 +300,20 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
 
         both_old = this_data[np.repeat(old_m,len(old_c)),np.tile(old_c,len(old_m))].reshape(len(old_m),len(old_c))
 
+
+
         U2, s2, V2 = np.linalg.svd(both_old)
-        mut_new = this_data[np.repeat(new_m,len(old_c)),np.tile(old_c,len(new_m))].reshape(len(new_m),len(old_c))                    
+        mut_new = this_data[np.repeat(new_m,len(old_c)),np.tile(old_c,len(new_m))].reshape(len(new_m),len(old_c))  
         cond_new = this_data[np.repeat(old_m,len(new_c)),np.tile(new_c,len(old_m))].reshape(len(old_m),len(new_c))
         both_new = this_data[np.repeat(new_m,len(new_c)),np.tile(new_c,len(new_m))].reshape(len(new_m),len(new_c))
+
+        mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(new_c)).reshape(len(new_m),len(new_c))
+
+        if mse:
+            mean_fits.append(np.sum(np.square(both_new-mean_mutant_prediction)))
+        else: 
+            mean_fits.append(var_explained(both_new,mean_mutant_prediction)[0])
+
 
         for rank in range(1,max_rank+1):
 
@@ -299,7 +347,7 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
         all_folds = all_folds + rank_fit
         fold_fits.append(rank_fit)
         
-    return all_folds, fold_fits, fold_fits_by_condition, fold_fits_by_mutant
+    return all_folds, fold_fits, fold_fits_by_condition, fold_fits_by_mutant, mean_fits
 
 def SVD_fits(data,mse=False):
     U, s, V = np.linalg.svd(data)
@@ -415,13 +463,14 @@ def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False,s
     
     n_folds = len(folds)
 
-    real_fits, all_fold_fits, by_condition = SVD_predictions(this_f,folds,n_mutants,n_conditions,n_folds,mse=mse)
+    real_fits, all_fold_fits, by_condition, fold_fits_by_mutant, mean_fits = SVD_predictions(this_f,folds,n_mutants,n_conditions,n_folds,mse=mse)
     real_fits = real_fits/n_folds
     
     max_rank = len(real_fits)
+
     if show_folds:
         for fold in range(n_folds):
-            plt.plot(range(1,max_rank+1),all_fold_fits[fold][0],color='gray',alpha=0.3)
+            plt.plot(range(1,max_rank+1),all_fold_fits[fold],color='gray',alpha=0.3)
 
     for perm in range(n_permutations):
         permuted_mutants = copy.copy(this_f)

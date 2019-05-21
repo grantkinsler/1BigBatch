@@ -12,7 +12,8 @@ from scipy.stats import norm
 
 
 def inferFitness(barcodes,cycleTimes,allReads,outputFolder=None,experimentName=None,neutralBarcodes=None,
-                 multNoiseThresh=3e3,zCutoff=2.7,multNoiseBase=0.1,use_all_neutral=False,lowCoverageThresh=5e5,sparsityThresh=None,firstPass=True,useMultNoise=True):
+                 multNoiseThresh=3e3,zCutoff=2.7,multNoiseBase=0.1,use_all_neutral=False,lowCoverageThresh=5e5,
+                 sparsityThresh=None,firstPass=True,useMultNoise=True,weightedMean=True):
     """
     inferFitness - main fitness inference function. Expects barcodes, cycle times, and reads; returns dictionary of
     fitness inference data for all replicates. See Venkataram et. al. Cell 2016 for details of fitness assay algorithm.
@@ -84,7 +85,7 @@ def inferFitness(barcodes,cycleTimes,allReads,outputFolder=None,experimentName=N
 
     # infer fitnesses
 
-    repFitnessData = inferFitnessAndError(filteredReads,filteredCycleTimes,multNoiseParams,neutralIndices,zCutoff,barcodes,use_all_neutral)
+    repFitnessData = inferFitnessAndError(filteredReads,filteredCycleTimes,multNoiseParams,neutralIndices,zCutoff,barcodes,use_all_neutral,weightedMean)
 
     # output consistency checks on multiplicative noise estimation
     print('Multiplicative noise consistency checks')
@@ -338,7 +339,7 @@ def inferMultNoise(allReads,allCycleTimes,multNoiseThresh,multNoiseBase,useMultN
 
     return multNoiseParams
 
-def inferFitnessAndError(allReads,allCycleTimes,multNoiseParams,neutralIndices,zCutoff,barcodes,use_all_neutral):
+def inferFitnessAndError(allReads,allCycleTimes,multNoiseParams,neutralIndices,zCutoff,barcodes,use_all_neutral,weightedMean):
     """
     inferFitnessAndError - Carries out fitness inference once neutrals identified and multiplicative noise parameter
     is estimated
@@ -391,7 +392,11 @@ def inferFitnessAndError(allReads,allCycleTimes,multNoiseParams,neutralIndices,z
                                 +np.power(multNoiseParams[repName],2))/(allCycleTimes[repName][1:]-allCycleTimes[repName][0:-1])
 
         # calculate ave fitness and error
-        aveFitness,aveError = inverseVarAve(allTimeFitness,allTimeErrors)
+        if weightedMean:
+            aveFitness,aveError = inverseVarAve(allTimeFitness,allTimeErrors)
+        else:
+            allTimeErrors = np.ones(allTimeErrors.shape)
+            aveFitness,aveError = inverseVarAve(allTimeFitness,allTimeErrors)
 
         # save data
         tempDataDict['barcodes'] = barcodes
