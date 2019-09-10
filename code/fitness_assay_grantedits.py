@@ -66,6 +66,11 @@ def inferFitness(barcodes,cycleTimes,allReads,outputFolder=None,experimentName=N
     # filter out low coverage/sparse timepoints
     filteredCycleTimes,filteredReads = filterTimepoints(cycleTimes,allReads,lowCoverageThresh,sparsityThresh)
 
+    # print(filteredCycleTimes)
+    # print(cycleTimes)
+    # print(lowCoverageThresh)
+    # print(filteredReads)
+
     # set neutral indices (boolean array)
 
     if neutralBarcodes is None:
@@ -138,7 +143,9 @@ def filterTimepoints(cycleTimes,allReads,lowCoverageThresh,sparsityThresh=None):
         currentCycleTimes = np.zeros(len(cycleTimes))
         currentCycleIdx = 0
         for t in range(0,len(cycleTimes)):
+            # print(allReads[repName].shape)
             totReads = np.sum(allReads[repName][:,t])
+            # print(totReads)
             sparsity = np.sum(allReads[repName][:,t]==0)/np.size(allReads[repName][:,t])
             if totReads>lowCoverageThresh and (not sparsityCheck or sparsity<sparsityThresh):
                 currentCycleTimes[currentCycleIdx] = t
@@ -228,8 +235,8 @@ def meanVarAndNeutrals(neutralIndices,replicateReads,zCutoff,cycleTimes,use_all_
             # quartile to use for inference
             pWidth = 0.25
             sortedZ = np.sort(zScores)
-            minIdx = round((0.5-pWidth)*len(sortedZ))
-            maxIdx = round((0.5+pWidth)*len(sortedZ))
+            minIdx = int(round((0.5-pWidth)*len(sortedZ)))
+            maxIdx = int(round((0.5+pWidth)*len(sortedZ)))
             deltaZ = sortedZ[maxIdx]-sortedZ[minIdx]
             estWidth = deltaZ/(norm.ppf(0.5+pWidth)-norm.ppf(0.5-pWidth))
             for idx,isNeutral in enumerate(neutralIndices):
@@ -332,6 +339,9 @@ def inferMultNoise(allReads,allCycleTimes,multNoiseThresh,multNoiseBase,useMultN
                 multNoiseParams[repName] = calculatedMultNoise[mappedTimePoints[repName].astype('int')]
         else:
             for repName in repNames:
+                print(repName)
+                print(allCycleTimes)
+                print(len(allCycleTimes[repName]))
                 multNoiseParams[repName] = multNoiseBase*np.ones(len(allCycleTimes[repName])-1)
     else:
         print(len(allCycleTimes[repNames[0]]))
@@ -424,8 +434,16 @@ def inverseVarAve(meanVals,standardDevs):
     :return weightedStandardDevs: N x 1 vector of final standard error
     """
 
-    weightedMeans = np.sum(meanVals*np.power(standardDevs,-2),axis=1)/np.sum(np.power(standardDevs,-2),axis=1)
-    weightedStandardDevs = np.power(np.sum(np.power(standardDevs,-2),axis=1),-0.5)
+    meanVals[meanVals == np.inf] = np.nan
+    meanVals[meanVals == -np.inf] = np.nan
+    standardDevs[standardDevs == np.inf]= np.nan
+    standardDevs[standardDevs == -np.inf] = np.nan
+
+    # weightedMeans = np.sum(meanVals*np.power(standardDevs,-2),axis=1)/np.sum(np.power(standardDevs,-2),axis=1)
+    # weightedStandardDevs = np.power(np.sum(np.power(standardDevs,-2),axis=1),-0.5)
+
+    weightedMeans = np.nansum(meanVals*np.power(standardDevs,-2),axis=1)/np.nansum(np.power(standardDevs,-2),axis=1)
+    weightedStandardDevs = np.power(np.nansum(np.power(standardDevs,-2),axis=1),-0.5)
 
     return weightedMeans,weightedStandardDevs
 

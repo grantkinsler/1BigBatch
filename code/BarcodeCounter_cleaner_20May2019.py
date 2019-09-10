@@ -6,15 +6,17 @@ from Bio.Seq import Seq
 import copy
 import datetime
 
-data = p.read_table('../data/allBarcodeCounts_noF_doubleBC_OneAncestor.tab')
+# data = p.read_table('../data/allBarcodeCounts_noF_doubleBC_OneAncestor.tab')
+data = p.read_table('../data/allBarcodeCounts_doubleBC_OneAncestor.tab')
 
 bc_fasta = SeqIO.to_dict(SeqIO.parse(open('../data/Consecutive_500pool_NoConstant_OneAncestor_ReverseComplement_BothBCs.fasta'),'fasta'))
 
 
 ### SAMPLES THAT WERE SWAPPED WHEN FREEZING DOWN CELLS FOR GENOMIC DNA EXTRACTION
-flask_swaps = {'Y1':'CC1','Z1':'DD1','CC1':'Y1','DD1':'Z1'}
+flask_swaps = {'Y1':'CC1','Z1':'DD1','CC1':'Y1','DD1':'Z1',
+                'U1':'W1','V1':'X1','W1':'U1','X1':'V1'}
 
-# bad_samples = ['B3-DE1-PCRb']
+bad_samples = ['B3-DE1-PCRb']
 
 
 data['barcode'] = list(bc_fasta.keys()) + ['9999999']
@@ -200,7 +202,7 @@ data['class'] = class_list
 data['additional_muts'] = additional_muts
 
 ### Write raw count data with mutations now
-data.to_csv(f"../data/BarcodeCounts_noF_DoubleBC_flaskswapcorrected_{datetime.date.today().strftime('%m%d%y')}_withBCinfo.csv",index=False)
+data.to_csv(f"../data/BarcodeCounts_DoubleBC_flaskswapcorrected_{datetime.date.today().strftime('%m%d%y')}_withBCinfo.csv",index=False)
 
 
 cols_by_condition = np.unique([col.split('-DE')[0] for col in data.columns])
@@ -210,12 +212,13 @@ merged_data = {}
 for merge_col in cols_by_condition:
     this_data = np.zeros(len(data.index))
     for col in data.columns:
-        if 'DE' in col:
-            if col.split('-DE')[0] == merge_col:
-                this_data = this_data + data[col].values
-        elif '-' in col:
-            if col == merge_col:
-                this_data = this_data + data[col].values
+        if col not in bad_samples:
+            if 'DE' in col:
+                if col.split('-DE')[0] == merge_col:
+                    this_data = this_data + data[col].values
+            elif '-' in col:
+                if col == merge_col:
+                    this_data = this_data + data[col].values
             
     merged_data[merge_col] = this_data
 merged_data['barcode'] = data['barcode'].values
@@ -229,6 +232,6 @@ merged_data['additional_muts'] = data['additional_muts'].values
 
 merged_data = p.DataFrame.from_dict(merged_data)
 
-merged_data.to_csv(f"../data/BarcodeCounts_noF_DoubleBC_merged+flaskswapcorrected_{datetime.date.today().strftime('%m%d%y')}_withBCinfo.csv",index=False)
+merged_data.to_csv(f"../data/BarcodeCounts_DoubleBC_merged+flaskswapcorrected_{datetime.date.today().strftime('%m%d%y')}_withBCinfo.csv",index=False)
 
 

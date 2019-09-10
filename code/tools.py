@@ -5,20 +5,74 @@ import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 from scipy.spatial import distance
 from scipy.stats.mstats import gmean
+from multiprocessing import Pool
 from sklearn.linear_model import LinearRegression
+from scipy.spatial.distance import cdist, euclidean
+from itertools import combinations
 import itertools
 import copy
 
+
+renamed_conditions = {
+                  # '19':'M3 NoAnc',
+                  '19':'M3 Batch 9',
+                  'M3_Batch_3':'M3 Batch 1',
+                  'M3_Batch_6':'M3 Batch 2',
+                  'M3_Batch_13':'M3 Batch 3',
+                  'M3_Batch_18':'M3 Batch 4',
+                  'M3_Batch_20':'M3 Batch 5',
+                  'M3_Batch_21':'M3 Batch 6',
+                  'M3_Batch_23':'M3 Batch 7',
+                  '1BB_M3':'M3 Batch 8',
+                  '1BB_Baffle':'Baffle',
+                  '1BB_1.4%Gluc' :'w/ 1.4% Gluc',
+                  '1BB_1.8%Gluc' :'w/ 1.8% Gluc',
+                  '1BB_0.2MNaCl' :'+ 0.2M NaCl',
+                  '1BB_0.5MNaCl' :'+ 0.5M NaCl',
+                  '1BB_0.2MKCl' :'+ 0.2M K12Cl',
+                  '1BB_0.5MKCl' :'+ 0.5M KCl',
+                  '1BB_8.5uMGdA' :'+ 8.5uM GdA(8)',
+                  '1BB_17uMGdA' :'+ 17uM GdA',
+                  '1BB_2ugFlu' :'+ 2ug Flu',
+                  '1BB_0.5ugFlu' :'+ 0.5ug Flu',
+                  '1BB_1%Raf' :'+ 1% Raf',
+                  '1BB_0.5%Raf' :'+ 0.5% Raf',
+                  '1BB_1%Gly' :'+ 1% Gly',
+                  '1BB_1%EtOH' :'+ 1% EtOH',
+                  '1BB_SucRaf' :'+ 1% Suc,Raf',
+                  'Ferm_44hr_Transfer':'12hr Ferm',
+                  'Ferm_40hr_Transfer':'8hr Ferm',
+                  'Ferm_54hr_Transfer':'22hr Ferm',
+                  'Ferm_50hr_Transfer':'18hr Ferm',
+                  'Resp_24hr_Transfer':'1 Day',
+                  'Resp_3Day_Transfer':'3 Day',
+                  'Resp_4Day_Transfer':'4 Day',
+                  'Resp_5Day_Transfer':'5 Day',
+                  'Resp_6Day_Transfer':'6 Day',
+                  'Resp_7Day_Transfer':'7 Day',
+                  'DMSO':'+ DMSO',
+                  'Geldanamycin8.5uM':'+ 8.5uM GdA(1)'}
+
 mutant_colorset = {'CYR1':'#cab2d6', # light purple
-                 'Diploid':'#fb9a99', # light red
-                 'Diploid + Chr11Amp':'#e31a1c', # dark red for adaptive diploids
-                 'Diploid + Chr12Amp':'#e31a1c',
-                 'Diploid + IRA1':'#e31a1c',
-                 'Diploid + IRA2':'#e31a1c',
+                 # 'Diploid':'#fb9a99', # light red
+                 # 'Diploid + Chr11Amp':'#e31a1c', # dark red for adaptive diploids
+                 # 'Diploid + Chr12Amp':'#e31a1c',
+                 # 'Diploid + IRA1':'#e31a1c',
+                 # 'Diploid + IRA2':'#e31a1c',
+                 'Diploid':'#e31a1c',
+                 'Diploid + Chr11Amp':'#fb9a99', # dark red for adaptive diploids
+                 'Diploid + Chr12Amp':'#fb9a99',
+                 'Diploid + IRA1':'#fb9a99',
+                 'Diploid + IRA2':'#fb9a99',
+                 'Diploid_adaptive':'#fb9a99',
                  'GPB1':'#b2df8a',  # light green
                  'GPB2':'#33a02c',  # dark green
-                 'IRA1':'#1f78b4', # dark blue
-                 'IRA2':'#a6cee3', # light blue
+                 # 'IRA1':'#1f78b4', # dark blue
+                 # 'IRA2':'#a6cee3', # light blue
+                 'IRA1_nonsense':'#1f78b4', # dark blue
+                 'IRA1_missense':'#a6cee3', # dark blue
+                 'IRA2':'gray', # light blue
+                 'IRA1_other':'gray', # light blue
                  'NotSequenced':'gray',
                  'PDE2':'#ff7f00',  # dark orange
                  'RAS2':'#ffff99', # yellow
@@ -55,6 +109,16 @@ def flatten(list2d):
 
 def jitter_point(mean,std=0.15):
     return np.random.normal(mean,std)
+
+def inverse_variance_mean(means,standard_devs):
+
+    variances = standard_devs
+
+    mean = np.sum(means/variances)/(np.sum(1/variances))
+
+    variance = (np.sum(1/variances))**(-1)
+
+    return mean, variance
 
 
 def downsample_single(set1,target):
@@ -169,6 +233,62 @@ def var_explained(data,model):
     
     return 1 - ss_res/ss_tot, ss_res, ss_tot
 
+def sum_squared_error(data,model):
+
+    return np.sum(np.square(data-model))
+
+def max_variance_explainable(data,test_cols,n_samples=1000,r2=False):
+
+    test_errs = [col.replace('fitness','error') for col in test_cols]
+
+    resampled_data = [np.random.normal(data[test_cols].values,data[test_errs].values) for s in range(n_samples)]
+
+    if r2 == True:
+        r2s = [var_explained(data[test_cols].values,resampled_data[s])[0] for s in range(n_samples)]
+
+        return np.mean(r2s)
+    else:
+        sum_squares = [sum_squared_error(data[test_cols].values,resampled_data[s]) for s in range(n_samples)]
+        
+        return np.mean(sum_squares)
+
+
+
+def geometric_median(X, eps=1e-5):
+    y = np.mean(X, 0)
+
+    while True:
+        D = cdist(X, [y])
+        nonzeros = (D != 0)[:, 0]
+
+        Dinv = 1 / D[nonzeros]
+        Dinvs = np.sum(Dinv)
+        W = Dinv / Dinvs
+        T = np.sum(W * X[nonzeros], 0)
+
+        num_zeros = len(X) - np.sum(nonzeros)
+        if num_zeros == 0:
+            y1 = T
+        elif num_zeros == len(X):
+            return y
+        else:
+            R = (T - y) * Dinvs
+            r = np.linalg.norm(R)
+            rinv = 0 if r == 0 else num_zeros/r
+            y1 = max(0, 1-rinv)*T + min(1, rinv)*y
+
+        if euclidean(y, y1) < eps:
+            return y1
+
+        y = y1
+
+def centroid(arr):
+    length = arr.shape[0]
+    sum_x = np.sum(arr[:, 0])
+    sum_y = np.sum(arr[:, 1])
+    return sum_x/length, sum_y/length
+
+
 def SVD_condition_predictions(data,old_c,new_c,n_mutants,permuted_mutants=False,permuted_conditions=False,mse=False):
     
     """ Predicting new conditions from SVD fit on old conditions using ALL mutants """
@@ -230,8 +350,346 @@ def SVD_condition_predictions(data,old_c,new_c,n_mutants,permuted_mutants=False,
 
     return rank_fit, rank_fit_by_condition
 
+def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_conditions=False,mse=False,by_condition=False,by_mutant=False):
+    
+    """ 
+    Bi-cross validation using multiple folds of data matrix. 
 
-def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=False,permuted_conditions=False,mse=False):
+    Method from Owen and Perry 2009.
+
+    For each fold, we have the following data matrix:
+
+                        "new conditions"  "old conditions"
+    "new mutants"              A                  B
+    "old mutants"              C                  D
+
+    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
+    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
+
+    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
+
+        A - B * D_k^+ * C 
+
+    """
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    this_data = data
+
+    assert len(train_m) + len(test_m) == this_data.shape[0]
+    assert len(train_c) + len(test_c) == this_data.shape[1]
+
+    max_rank = min([len(train_c),len(train_m)])
+
+    fits_by_condition = []
+    fits_by_mutant = []
+    mean_fits =[]
+
+    if permuted_mutants and permuted_conditions:
+        this_data = copy.copy(data)
+        this_data[train_m,train_c] = np.random.permutation(this_data[train_m,train_c].ravel()).reshape(len(train_m),len(train_c))
+        subset = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].ravel()
+
+    elif permuted_mutants:
+        this_data = copy.copy(data)
+        for mut in train_m:
+            this_data[mut,train_c] = np.random.permutation(this_data[mut,train_c])
+
+    elif permuted_conditions:
+
+        this_data = np.swapaxes(copy.copy(data),0,1)
+        for cond in train_c:
+            this_data[cond,train_m] = np.random.permutation(this_data[cond,train_m])
+        this_data = np.swapaxes(this_data,0,1)
+
+    else:
+        this_data = copy.copy(data)
+
+
+    both_old = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+
+    U2, s2, V2 = np.linalg.svd(both_old)
+
+    mut_new = this_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
+    cond_new = this_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
+    both_new = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
+
+    if mse:
+        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
+    else: 
+        mean_fits = var_explained(both_new,mean_mutant_prediction)[0]
+
+    mean_fits_by_condition = []
+
+    if by_condition:
+        for k in range(len(test_c)):
+            if mse:
+                mean_fits_by_condition.append(np.sum(np.square(both_new[:,k]-mean_mutant_prediction[:,k])))
+            else:
+                mean_fits_by_condition.append(var_explained(both_new[:,k],mean_mutant_prediction[:,k])[0])
+
+
+    fit_by_rank = []
+    guesses = []
+    dhats = []
+    for rank in range(1,max_rank+1):
+
+        new_s = np.asarray(list(s2[:rank]) + list(np.zeros(s2[rank:].shape)))
+        S2 = np.zeros((U2.shape[0],V2.shape[0]))
+        S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
+
+        D_hat = np.dot(U2[:,:rank],np.dot(S2,V2)[:rank,:])
+        A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+
+        dhats.append(D_hat)
+        # print(rank,var_explained(both_old,D_hat)[0])
+
+        guesses.append(A_hat)
+        if mse:
+            fit_by_rank.append(np.sum(np.square(both_new-A_hat)))
+
+        else:
+            fit_by_rank.append(var_explained(both_new,A_hat)[0])
+
+        fits_by_condition.append([])
+        fits_by_mutant.append([])
+
+        if by_condition:
+            for k in range(len(test_c)):
+                if mse:
+                    fits_by_condition[rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
+                else:
+                    fits_by_condition[rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
+        if by_mutant: 
+            for j in range(len(test_m)):
+                if mse:
+                    fits_by_mutant[rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
+                else:
+                    fits_by_mutant[rank-1].append(var_explained(both_new[j,:],A_hat[j,:])[0])
+
+        
+    return fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits, mean_fits_by_condition, guesses, dhats, both_old
+
+def SVD_predictions_train_test_mixnmatch(data,train,test,n_components_per_set,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
+    
+    """ 
+    Bi-cross validation using multiple folds of data matrix. 
+
+    Method from Owen and Perry 2009.
+
+    For each fold, we have the following data matrix:
+
+                        "new conditions"  "old conditions"
+    "new mutants"              A                  B
+    "old mutants"              C                  D
+
+    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
+    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
+
+    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
+
+        A - B * D_k^+ * C 
+
+    """
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    this_data = data
+
+    assert len(train_m) + len(test_m) == this_data.shape[0]
+    assert len(train_c) + len(test_c) == this_data.shape[1]
+
+    max_rank = min([len(train_c),len(train_m)])
+
+    assert n_components_per_set <= max_rank
+
+    fits_by_condition = []
+    fits_by_mutant = []
+    mean_fits =[]
+
+    if permuted_mutants and permuted_conditions:
+        this_data = copy.copy(data)
+        this_data[train_m,train_c] = np.random.permutation(this_data[train_m,train_c].ravel()).reshape(len(train_m),len(train_c))
+        subset = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].ravel()
+
+    elif permuted_mutants:
+        this_data = copy.copy(data)
+        for mut in train_m:
+            this_data[mut,train_c] = np.random.permutation(this_data[mut,train_c])
+
+    elif permuted_conditions:
+
+        this_data = np.swapaxes(copy.copy(data))
+        for cond in old_c:
+            this_data[cond,train_m] = np.random.permutation(this_data[cond,train_m])
+        this_data = np.swapaxes(this_data,0,1)
+
+    else:
+        this_data = copy.copy(data)
+
+
+    both_old = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+
+    U2, s2, V2 = np.linalg.svd(both_old)
+
+    mut_new = this_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
+    cond_new = this_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
+    both_new = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
+
+    if mse:
+        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
+    else: 
+        mean_fits = var_explained(both_new,mean_mutant_prediction)[0]
+
+    fit_by_rank = []
+
+    component_sets = []
+
+    guesses = []
+
+
+    for cs,component_set in enumerate(combinations(range(max_rank),n_components_per_set)):
+        component_set = list(component_set)
+
+        component_sets.append(component_set)
+
+        # new_s = np.asarray(list(s2[component_set]) + list(np.zeros(len(s2)-len(component_set))))
+        new_s = np.asarray([s2[s] if s in component_set else 0 for s in range(len(s2))]  )
+        # print(new_s)
+        S2 = np.zeros((U2.shape[0],V2.shape[0]))
+        S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
+
+        D_hat = np.dot(U2[:,component_set],np.dot(S2,V2)[component_set,:])
+        A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+
+        guesses.append(A_hat)
+        if mse:
+            fit_by_rank.append(np.sum(np.square(both_new-A_hat)))
+
+        else:
+            fit_by_rank.append(var_explained(both_new,A_hat)[0])
+
+        fits_by_condition.append([])
+        fits_by_mutant.append([])
+
+        if by_condition:
+            for k in range(len(test_c)):
+                if mse:
+                    fits_by_condition[cs].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
+                else:
+                    fits_by_condition[cs].append(var_explained(both_new[:,k],A_hat[:,k])[0])
+        if by_mutant:
+            for j in range(len(test_m)):
+                if mse:
+                    fits_by_mutant[cs].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
+                else:
+                    fits_by_mutant[cs].append(var_explained(both_new[j,:],A_hat[j,:])[0])
+
+        
+    return fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits, component_sets, guesses
+
+def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
+    
+    """ 
+    Bi-cross validation using multiple folds of data matrix. 
+
+    Method from Owen and Perry 2009.
+
+    For each fold, we have the following data matrix:
+
+                        "new conditions"  "old conditions"
+    "new mutants"              A                  B
+    "old mutants"              C                  D
+
+    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
+    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
+
+    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
+
+        A - B * D_k^+ * C 
+
+    """
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    this_data = data
+
+    assert len(train_m) + len(test_m) == this_data.shape[0]
+    assert len(train_c) + len(test_c) == this_data.shape[1]
+
+    max_rank = min([len(train_c),len(train_m)])
+
+    fits_by_condition = []
+    fits_by_mutant = []
+    mean_fits =[]
+
+    both_old = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+
+    U2, s2, V2 = np.linalg.svd(both_old)
+
+    mut_new = this_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
+    cond_new = this_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
+    both_new = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
+
+    if mse:
+        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
+    else: 
+        mean_fits = var_explained(both_new,mean_mutant_prediction)[0]
+
+    fit_by_rank = []
+
+    guesses = []
+
+    # new_s = np.asarray(list(s2[component_set]) + list(np.zeros(len(s2)-len(component_set))))
+    new_s = np.asarray([s2[s] if s in component_set else 0 for s in range(len(s2))]  )
+    # print(new_s)
+    S2 = np.zeros((U2.shape[0],V2.shape[0]))
+    S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
+
+    train_mutant_locs = U2[:,component_set]
+    train_condition_locs = np.dot(S2,V2)[component_set,:]
+
+    D_hat = np.dot(U2[:,component_set],np.dot(S2,V2)[component_set,:])
+
+    ## do least squares linear regression explicitly to get the locations.G
+
+    reg_test_condition = LinearRegression(fit_intercept=False).fit(train_mutant_locs,cond_new)
+    test_condition_locs = reg_test_condition.coef_
+
+    reg_test_mutant = LinearRegression(fit_intercept=False).fit(train_condition_locs.swapaxes(0,1),mut_new.swapaxes(0,1))
+    test_mutant_locs = reg_test_mutant.coef_.swapaxes(0,1)
+
+    A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+
+    lin_reg_A_hat = np.dot(test_mutant_locs.swapaxes(0,1),test_condition_locs.swapaxes(0,1))
+
+    print(var_explained(both_new,A_hat)[0])
+
+    assert np.all(np.isclose(A_hat,lin_reg_A_hat)) # verify that the prediction we get is the same both ways
+
+        
+    return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs
+
+
+def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=False,permuted_conditions=False,mse=False,by_condition=False,by_mutant=False):
     
     """ 
     Bi-cross validation using multiple folds of data matrix. 
@@ -322,6 +780,8 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
             S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
 
             D_hat = np.dot(U2[:,:rank],np.dot(S2,V2)[:rank,:])
+
+            print(rank,var_explained(both_old,D_hat)[0])
             A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
             if mse:
                 rank_fit.append(np.sum(np.square(both_new-A_hat)))
@@ -331,17 +791,18 @@ def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=F
 
             fold_fits_by_condition[f].append([])
             fold_fits_by_mutant[f].append([])
-            
-            for k in range(len(new_c)):
-                if mse:
-                    fold_fits_by_condition[f][rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
-                else:
-                    fold_fits_by_condition[f][rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
-            for j in range(len(new_m)):
-                if mse:
-                    fold_fits_by_mutant[f][rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
-                else:
-                    fold_fits_by_mutant[f][rank-1].append(var_explained(both_new[j,:],A_hat[j,:])[0])
+            if by_condition:
+                for k in range(len(new_c)):
+                    if mse:
+                        fold_fits_by_condition[f][rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
+                    else:
+                        fold_fits_by_condition[f][rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
+            if by_mutant: 
+                for j in range(len(new_m)):
+                    if mse:
+                        fold_fits_by_mutant[f][rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
+                    else:
+                        fold_fits_by_mutant[f][rank-1].append(var_explained(both_new[j,:],A_hat[j,:])[0])
 
 
         all_folds = all_folds + rank_fit
@@ -379,7 +840,7 @@ def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutatio
     
     U, s, V = np.linalg.svd(this_f)
     
-    max_d = this_f.shape[1]
+    max_d = min(this_f.shape)
 
     if type(err) != np.float:
         error = err.flatten()
@@ -390,7 +851,9 @@ def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutatio
     noise_s_list = []
     perm_s_list = []
     for i in range(n_pulls):
-        this_set = np.asarray([np.random.normal(0,np.sqrt(error[i])) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+        # this_set = np.asarray([np.random.normal(0,np.sqrt(error[i])) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+        this_set = np.asarray([np.random.normal(0,error[i]) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+
         U, noise_s, V = np.linalg.svd(this_set)
         noise_s_list.append(noise_s)
         plt.plot(np.arange(1,max_d+1),np.square(noise_s)/np.sum(np.square(s)),color='gray',alpha=0.1)
@@ -504,11 +967,78 @@ def plot_mutant_components(ax,U,this_data,x_component,y_component,mutant_colorse
                     label=f"{this_data['gene'].values[mut]}" if this_data['gene'].values[mut] not in already_plotted else '_nolegend_')
         already_plotted.append(this_data['gene'].values[mut])
     plt.xlabel(f'Component {x_component+1}')
-    plt.ylabel(f'Component {y+component+1}')
+    plt.ylabel(f'Component {y_component+1}')
     plt.legend(bbox_to_anchor=(1.0,1.0),ncol=2)
-    ax.set_aspect('equal','box')
+    # ax.set_aspect('equal','box')
     ax.grid(True, which='both')
     sns.despine(ax=ax, offset=0) 
 
     return ax
 
+def SVD_train_test_folds(this_data,cols_avail,training_mutants,testing_mutants,n_folds):
+
+    best_guesses = {}
+    all_guesses = []
+    
+    for iteration in range(n_folds):
+        first_set =  sorted(np.random.choice(range(len(cols_avail)),int(len(cols_avail)/2),replace=False))
+        second_set = [i for i in range(len(cols_avail)) if i not in first_set]
+
+        cols_avail = np.asarray(cols_avail)
+
+        train_cols = list(cols_avail[first_set])
+        test_cols = list(cols_avail[second_set])
+
+        fitness_cols = train_cols + test_cols
+
+        fitness = this_data[fitness_cols].values
+
+        n_mutants = fitness.shape[0]
+        n_conditions = fitness.shape[1]
+
+        train_conditions = train_cols
+        train_locs = np.where(np.isin(fitness_cols,train_conditions))[0]
+
+        test_conditions = test_cols
+        test_locs = np.where(np.isin(fitness_cols,test_conditions))[0]
+
+        all_locs = sorted(list(train_locs)+list(test_locs))
+
+        used_mutants = [bc for bc in this_data['barcode'].values if bc in (list(training_mutants) + list(testing_mutants))]
+
+        all_mut_locs =sorted(list(np.where(np.isin(this_data['barcode'].values,used_mutants))[0]))
+
+        this_fitness = fitness[all_mut_locs,:][:,all_locs]
+        new_train_locs = np.where(np.isin(all_locs,train_locs))[0]
+        new_test_locs = np.where(np.isin(all_locs,test_locs))[0]  
+
+        train = [new_train_locs,np.where(np.isin(used_mutants,training_mutants))[0]]
+        test = [new_test_locs,np.where(np.isin(used_mutants,testing_mutants))[0]]
+
+        max_rank = min([len(train[0]),len(train[1])])
+
+        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True)
+
+        best_by_rank = output[0]
+        all_guesses.append(best_by_rank)
+        best_guesses[f'{iteration}'] = (min(best_by_rank),np.where(best_by_rank==min(best_by_rank))[0][0] +1)
+
+    return best_guesses, all_guesses
+
+
+
+
+class NullObjectHandler(object):
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        pass
+
+def text_color_legend(ax, visible_handles=False, legend_prop={'weight':'semibold'}, bbox_to_anchor=(0,0), **kargs):
+    """text_color_legend() -> eliminates legend key and simply colors labels with the color of the lines."""
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [handle[0] if type(handle) == list else handle for handle in handles]
+    if not visible_handles: 
+        kargs['handler_map'] = {handle:NullObjectHandler() for handle in handles}
+    L = ax.legend(handles, labels, prop=legend_prop, bbox_to_anchor=bbox_to_anchor, **kargs)
+    for handle, text in zip(handles, L.get_texts()):
+        text.set_color(handle.get_facecolor() if handle.get_fill() else handle.get_edgecolor())
+    return L
