@@ -1026,6 +1026,115 @@ def SVD_train_test_folds(this_data,cols_avail,training_mutants,testing_mutants,n
     return best_guesses, all_guesses
 
 
+def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list):
+
+    data_situation = {}
+
+    ## CROSS VALIDATION STAGE ON TRAINING DATA
+    cols_avail = train_cols
+    CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,testing_bcs,1000)
+
+    CV_best_rank_index =  np.where(np.mean(CV_all_guesses,axis=0)==min(np.mean(CV_all_guesses,axis=0)))[0][0]
+
+    data_situation['CV_best_guesses'] = CV_best_guesses
+    data_situation['CV_all_guesses'] = CV_all_guesses
+    data_situation['CV_best_rank_index'] = CV_best_rank_index
+
+
+    ## PREDICTION STAGE 
+
+    fitness_cols = train_cols + test_cols
+
+    fitness = this_data[fitness_cols].values
+
+    n_mutants = fitness.shape[0]
+    n_conditions = fitness.shape[1]
+
+    train_conditions = train_cols
+    train_locs = np.where(np.isin(fitness_cols,train_conditions))[0]
+
+    test_conditions = test_cols
+    test_locs = np.where(np.isin(fitness_cols,test_conditions))[0]
+
+    all_locs = sorted(list(train_locs)+list(test_locs))
+
+    used_mutants = [bc for bc in this_data['barcode'].values if bc in (list(training_bcs) + list(testing_bcs))]
+
+    all_mut_locs =sorted(list(np.where(np.isin(this_data['barcode'].values,used_mutants))[0]))
+
+    this_fitness = fitness[all_mut_locs,:][:,all_locs]
+    new_train_locs = np.where(np.isin(all_locs,train_locs))[0]
+    new_test_locs = np.where(np.isin(all_locs,test_locs))[0]  
+
+    train = [new_train_locs,np.where(np.isin(used_mutants,training_bcs))[0]]
+    test = [new_test_locs,np.where(np.isin(used_mutants,testing_bcs))[0]]
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    both_new = this_fitness[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    all_m = sorted(list(train_m) + list(test_m))
+    new_cond = this_fitness[np.repeat(all_m,len(test_c)),np.tile(test_c,len(all_m))].reshape(len(all_m),len(test_c))
+
+    data_situation['this_fitness'] = this_fitness
+    data_situation['train'] = train
+    data_situation['test'] = test
+    data_situation['both_new'] = both_new
+
+    fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits,mean_fits_by_condition, guesses, dhats, both_old = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,by_mutant=True)
+
+
+    data_situation['fit_by_rank'] = fit_by_rank
+    data_situation['fits_by_condition'] = fits_by_condition
+    data_situation['fits_by_mutant'] = fits_by_mutant
+    data_situation['mean_fits'] = mean_fits
+    data_situation['mean_fits_by_condition']= mean_fits_by_condition
+    data_situation['guesses'] = guesses
+    data_situation['dhats'] = dhats
+    data_situation['both_old'] = both_old
+    data_situation['train_conditions'] = train_conditions
+    data_situation['test_conditions'] = test_conditions
+
+    max_rank = min([len(train[0]),len(train[1])])
+
+    data_situation['mut_locs'] = []
+    data_situation['distances'] = []
+    data_situation['geom_medians'] = []
+    data_situation['avg_pairwise'] = []
+    data_situation['distance_from_median'] = []
+    ### LOCATIONS
+    for model in range(1,max_rank+1):
+        fit, train_muts, test_muts, train_cond, test_cond = SVD_mixnmatch_locations(this_fitness,train,test,range(model))
+        all_muts = np.concatenate((train_muts,test_muts))
+        all_muts = all_muts[np.argsort(np.concatenate((train[1],test[1])))]
+
+        data_situation['mut_locs'].append(all_muts)
+        data_situation['distances'].append(distance.pdist(all_muts))
+
+        geom_medians = {}
+        avg_pairwise = {}
+        distances_from_median = {}
+
+        for gene in gene_list:
+            these_locs = np.where(np.isin(used_mutants,this_data[this_data['mutation_type']==gene]['barcode'].values))
+            geom_medians[gene] = geometric_median(all_muts[these_locs,:][0])
+            avg_pairwise[gene] = np.mean(distance.pdist(all_muts[these_locs,:][0]))
+
+
+            distances_from_median[gene] = []
+            for loc in these_locs[0]:
+                distances_from_median[gene].append(distance.euclidean(all_muts[loc,:][0],geom_medians[gene]))
+
+
+        data_situation['geom_medians'].append(geom_medians)
+        data_situation['avg_pairwise'].append(avg_pairwise)
+        data_situation['distance_from_median'].append(distances_from_median)
+
+    return data_situation
 
 
 class NullObjectHandler(object):
