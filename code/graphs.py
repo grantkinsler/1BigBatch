@@ -36,13 +36,15 @@ def fitness_featured_genes_figure(ax,this_data,minimal_training_bcs,minimal_test
     jitters = [tools.jitter_point(0,0.01) for bc in range(len(this_gene_data[m3_conditions[0]].values)) ]
 
 
-    for i in range(7):
+    ### eye guides
+    for i in range(int(np.ceil(len(nonm3_conditions)/3))):
         if (i % 2) == 0:
-    #         print(i)
-            rect = matplotlib.patches.Rectangle((len(m3_conditions)+1+4*i-0.5,ymin),4,ymax-ymin,
+            # print(i)
+            rect = matplotlib.patches.Rectangle((len(m3_conditions)+1+3*i-0.5,ymin),3,ymax-ymin,
                                             linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
         
             ax.add_patch(rect)
+
 
     # plt.title(f'Predictions with {rank+1} components')
     for i,col in enumerate(m3_conditions):
@@ -142,10 +144,10 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
     plt.axhline(y=0.0,color='k',linestyle=':',alpha=0.2)
 
     ### eye guides
-    for i in range(7):
+    for i in range(int(np.ceil(len(nonm3_conditions)/3))):
         if (i % 2) == 0:
             # print(i)
-            rect = matplotlib.patches.Rectangle((len(m3_conditions)+1+4*i-0.5,ymin),4,ymax-ymin,
+            rect = matplotlib.patches.Rectangle((len(m3_conditions)+1+3*i-0.5,ymin),3,ymax-ymin,
                                             linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
         
             ax.add_patch(rect)
@@ -226,7 +228,7 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
     if legend:
         legend_split = np.ceil(len(gene_list)/legend_cols)
         for g,gene in enumerate(gene_list):
-            x_loc = 0.02+np.floor((g)/legend_split)*0.3
+            x_loc = 0.01+np.floor((g)/legend_split)*0.3
             y_loc = 0.05*(legend_split-1)-0.05*(g%legend_split)+0.02
             plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=fontsize,
                   fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
@@ -256,15 +258,17 @@ def zscore_graph(ax,m3_z_scores,nonm3_z_scores,sorted_m3_cols,sorted_nonm3_cols,
 
     plt.axhline(sigma_thresh,color=below_color,linestyle='--',alpha=0.2)
 
-    for i in range(7):
+    ### eye guides
+    for i in range(int(np.ceil(len(sorted_nonm3_cols)/3))):
         if (i % 2) == 0:
             # print(i)
-            rect = matplotlib.patches.Rectangle((len(sorted_m3_cols)+4*i-0.5,ymin),4,ymax-ymin,
+            rect = matplotlib.patches.Rectangle((len(sorted_m3_cols)+3*i-0.5,ymin),3,ymax-ymin,
                                             linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
         
             ax.add_patch(rect)
 
-    all_z_scores = np.asarray(sorted(np.mean(m3_z_scores,axis=0))+sorted(np.mean(nonm3_z_scores,axis=0)))
+
+    all_z_scores = np.asarray(sorted(m3_z_scores)+sorted(nonm3_z_scores))
     below = all_z_scores[np.where(all_z_scores < sigma_thresh)[0]]
     above = all_z_scores[np.where(all_z_scores > sigma_thresh)[0]]
 
@@ -286,7 +290,7 @@ def zscore_graph(ax,m3_z_scores,nonm3_z_scores,sorted_m3_cols,sorted_nonm3_cols,
 
     # plt.tight_layout()
     plt.ylim(ymin,ymax)
-    plt.yticks(range(ymin,ymax,ytick_interval),range(ymin,ymax,ytick_interval))
+    plt.yticks(range(ymin,ymax+1,ytick_interval),range(ymin,ymax+1,ytick_interval))
 
     return ax
 
@@ -386,7 +390,7 @@ def Figure4(dataset):
 
     sns.violinplot(data=np.asarray(all_guesses),color='lightgray',alpha=0.1)
     plt.plot(np.mean(all_guesses,axis=0),'k',label='Average')
-    plt.ylim(0,30)
+    # plt.ylim(0,30)
     plt.xticks(range(len(np.mean(all_guesses,axis=0))),range(1,len(np.mean(all_guesses,axis=0))+1))
     plt.xlabel('Number of phenotypes')
     plt.ylabel('MSE')

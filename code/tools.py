@@ -24,12 +24,12 @@ renamed_conditions = {
                   'M3_Batch_21':'M3 Batch 6',
                   'M3_Batch_23':'M3 Batch 7',
                   '1BB_M3':'M3 Batch 8',
-                  '1BB_Baffle':'Baffle',
-                  '1BB_1.4%Gluc' :'w/ 1.4% Gluc',
-                  '1BB_1.8%Gluc' :'w/ 1.8% Gluc',
+                  '1BB_Baffle':'Baffle(8)',
+                  '1BB_1.4%Gluc' :'1.4% Gluc',
+                  '1BB_1.8%Gluc' :'1.8% Gluc',
                   '1BB_0.2MNaCl' :'+ 0.2M NaCl',
                   '1BB_0.5MNaCl' :'+ 0.5M NaCl',
-                  '1BB_0.2MKCl' :'+ 0.2M K12Cl',
+                  '1BB_0.2MKCl' :'+ 0.2M KCl',
                   '1BB_0.5MKCl' :'+ 0.5M KCl',
                   '1BB_8.5uMGdA' :'+ 8.5uM GdA(8)',
                   '1BB_17uMGdA' :'+ 17uM GdA',
@@ -51,7 +51,12 @@ renamed_conditions = {
                   'Resp_6Day_Transfer':'6 Day',
                   'Resp_7Day_Transfer':'7 Day',
                   'DMSO':'+ DMSO',
-                  'Geldanamycin8.5uM':'+ 8.5uM GdA(1)'}
+                  'Geldanamycin8.5uM':'+ 8.5uM GdA(1)',
+                  '1.4%':'Baffle, 1.4% Gluc',
+                  '1.5%':'Baffle(10)',
+                  '1.6%':'Baffle, 1.6% Gluc',
+                  '1.7%':'Baffle, 1.7% Gluc',
+                  '1.8%':'Baffle, 1.8% Gluc'}
 
 mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  # 'Diploid':'#fb9a99', # light red
