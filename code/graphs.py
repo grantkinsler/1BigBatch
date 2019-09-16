@@ -305,15 +305,15 @@ def largescale_predictions_graph(ax,this_fitness,train,test,both_new,guesses,mod
         perm_out = tools.SVD_predictions_train_test(this_fitness,train,test,by_condition=True,permuted_conditions=True)
         perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][model][:,i])[0] for i in range(both_new.shape[1])])
         perms = perms + perm
-        plt.plot(perm,color='gray',alpha=0.01)
-    plt.plot((perms/n_perms),color='k',alpha=0.8,label='Permutation Average')
+        plt.plot(perm,'.',color='gray',alpha=0.01)
+    plt.plot((perms/n_perms),'_',color='k',alpha=0.8,label='Permutation Average')
 
     dumb = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
-    plt.plot(dumb,color='k',linestyle='--',alpha=0.8,label='1 component model')
+    plt.plot(dumb,'o',markeredgecolor='k',markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
 
     this_sse = np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])])
         
-    plt.plot(this_sse,'o-',label=f'{model+1} component model',color='r',alpha=1.0)
+    plt.plot(this_sse,'o',label=f'{model+1} component model',color='r',alpha=0.8)
         
     # for i in range(100):
     #     perm_out = tools.SVD_predictions_train_test(this_fitness,train,test,by_condition=True,permuted_mutants=True)
@@ -406,10 +406,14 @@ def Figure4(dataset):
     this_min = min([np.min(both_old),np.min(dhats[model])])
     this_max = max([np.max(both_old),np.max(dhats[model])])
     plt.plot([this_min,this_max],[this_min,this_max],'k--')
-    plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.3*this_max,0.1),
-                 color=sns.color_palette()[0],transform=ax3.transAxes)
-    plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.3*this_max,0.0),
-                 color=sns.color_palette()[1],transform=ax3.transAxes)
+    xdisplay, ydisplay = ax3.transAxes.transform_point((0.3, 0.1))
+
+    plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
+                 color=sns.color_palette()[0],xycoords='axes fraction')
+
+    xdisplay, ydisplay = ax3.transAxes.transform_point((0.3, 0.0))
+    plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
+                 color=sns.color_palette()[1],xycoords='axes fraction')
     # plt.legend()
 
     ax4 = plt.subplot(224)

@@ -686,7 +686,7 @@ def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,per
 
     lin_reg_A_hat = np.dot(test_mutant_locs.swapaxes(0,1),test_condition_locs.swapaxes(0,1))
 
-    print(var_explained(both_new,A_hat)[0])
+    print(len(component_set),var_explained(both_new,A_hat)[0])
 
     assert np.all(np.isclose(A_hat,lin_reg_A_hat)) # verify that the prediction we get is the same both ways
 
