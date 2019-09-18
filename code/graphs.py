@@ -367,72 +367,8 @@ def predictions_figure(ax,train,test,this_fitness,both_new,guesses,model,test_co
 
     return ax
 
-def Figure4(dataset):
-    all_guesses = dataset['CV_all_guesses']
-    both_old = dataset['both_old']
-    dhats = dataset['dhats']
-    this_fitness  = dataset['this_fitness']
-    train  = dataset['train']
-    test = dataset['test']
-    both_new = dataset['both_new']
-    guesses = dataset['guesses']
-    model = dataset['CV_best_rank_index']
-    test_conditions  = dataset['test_conditions']
 
-    fig = plt.figure(figsize=(8,8))
-
-    ax1 = plt.subplot(221)
-
-    plt.text(s='Visualization of folding process',x=0.1,y=0.5)
-
-
-    ax2 = plt.subplot(222)
-
-    sns.violinplot(data=np.asarray(all_guesses),color='lightgray',alpha=0.1)
-    plt.plot(np.mean(all_guesses,axis=0),'k',label='Average')
-    # plt.ylim(0,30)
-    plt.xticks(range(len(np.mean(all_guesses,axis=0))),range(1,len(np.mean(all_guesses,axis=0))+1))
-    plt.xlabel('Number of phenotypes')
-    plt.ylabel('MSE')
-
-
-    ax3 = plt.subplot(223)
-
-    # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
-    plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
-    plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
-    plt.xlabel('Measured Training Data')
-    plt.ylabel('Estimated Training Data')
-    this_min = min([np.min(both_old),np.min(dhats[model])])
-    this_max = max([np.max(both_old),np.max(dhats[model])])
-    plt.plot([this_min,this_max],[this_min,this_max],'k--')
-    xdisplay, ydisplay = ax3.transAxes.transform_point((0.3, 0.1))
-
-    plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
-                 color=sns.color_palette()[0],xycoords='axes fraction')
-
-    xdisplay, ydisplay = ax3.transAxes.transform_point((0.3, 0.0))
-    plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
-                 color=sns.color_palette()[1],xycoords='axes fraction')
-    # plt.legend()
-
-    ax4 = plt.subplot(224)
-
-    largescale_predictions_graph(ax4,this_fitness,train,test,both_new,guesses,model,test_conditions)
-
-    plt.xlabel('Condition')
-
-    plt.tight_layout()
-
-    # plt.savefig('Figure4_working_testBC_withC.pdf',bbox_inches='tight')
-
-    return fig
-
-
-
-
-
-def distance_comparison_figure(distances_x,distances_y,geom_medians_x,geom_medians_y,avg_pairwise_x,avg_pairwise_y,gene_list,ylim='default',include_ancestor=True):
+def distance_comparison_figure(ax,distances_x,distances_y,geom_medians_x,geom_medians_y,avg_pairwise_x,avg_pairwise_y,gene_list,ylim='default',include_ancestor=True):
 
     fig = plt.figure(figsize=(4+1,4+1))
     gs = GridSpec(2, 2, width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
@@ -492,6 +428,76 @@ def distance_comparison_figure(distances_x,distances_y,geom_medians_x,geom_media
 
     return fig
 
+
+
+def Figure4(dataset,gene_list):
+    all_guesses = dataset['CV_all_guesses']
+    both_old = dataset['both_old']
+    dhats = dataset['dhats']
+    this_fitness  = dataset['this_fitness']
+    train  = dataset['train']
+    test = dataset['test']
+    both_new = dataset['both_new']
+    guesses = dataset['guesses']
+    model = dataset['CV_best_rank_index']
+    test_conditions  = dataset['test_conditions']
+
+    fig = plt.figure(figsize=(8,8))
+
+    ax1 = plt.subplot(221)
+
+    sns.violinplot(data=np.asarray(all_guesses),color='lightgray',alpha=0.1)
+    plt.plot(np.mean(all_guesses,axis=0),'k',label='Average')
+    # plt.ylim(0,30)
+    plt.xticks(range(len(np.mean(all_guesses,axis=0))),range(1,len(np.mean(all_guesses,axis=0))+1))
+    plt.xlabel('Number of phenotypes')
+    plt.ylabel('Log Likelihood')
+
+
+    ax2 = plt.subplot(222)
+
+    # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
+    plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
+    plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
+    plt.xlabel('Measured Training Data')
+    plt.ylabel('Estimated Training Data')
+    this_min = min([np.min(both_old),np.min(dhats[model])])
+    this_max = max([np.max(both_old),np.max(dhats[model])])
+    plt.plot([this_min,this_max],[this_min,this_max],'k--')
+    xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.1))
+
+    plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
+                 color=sns.color_palette()[0],xycoords='axes fraction')
+
+    xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.0))
+    plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
+                 color=sns.color_palette()[1],xycoords='axes fraction')
+    # plt.legend()
+
+    ax3 = plt.subplot(223)
+
+    largescale_predictions_graph(ax3,this_fitness,train,test,both_new,guesses,model,test_conditions)
+
+    plt.xlabel('Condition')
+
+
+    ax4 = plt.subplot(224)
+    x_d = 0
+    y_d = model
+
+    distance_comparison_figure(ax4,dataset['distances'][x_d],dataset['distances'][y_d],
+                                     dataset['geom_medians'][x_d],dataset['geom_medians'][y_d],
+                                     dataset['avg_pairwise'][x_d],dataset['avg_pairwise'][y_d],
+                                      gene_list,include_ancestor=False)
+
+    plt.xlabel(f'{x_d+1}')
+    plt.ylabel(f'{y_d+1}')
+
+    plt.tight_layout()
+
+    # plt.savefig('Figure4_working_testBC_withC.pdf',bbox_inches='tight')
+
+    return fig
 
 
 
