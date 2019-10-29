@@ -4,12 +4,13 @@ import pandas as p
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.gridspec import GridSpec
+from matplotlib import gridspec
 from itertools import combinations
 from scipy.spatial import distance
 from tools import mutant_colorset
 from tools import condition_colorset
 from tools import renamed_conditions
+from tools import tick_base_calculator
 sns.set_color_codes()
 
 
@@ -93,7 +94,7 @@ def fitness_featured_genes_figure(ax,this_data,minimal_training_bcs,minimal_test
     return ax
 
 
-def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minimal_testing_bcs,m3_conditions,nonm3_conditions,gene_list,
+def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3_conditions,gene_list,
     ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=12,style='default',side_bars=True,faded_alpha=0.3):
 
     # test_mutant_data = this_data[~this_data['barcode'].isin(minimal_training_bcs)]
@@ -111,14 +112,7 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
         guide_color = 'gray'
         guide_alpha = 0.07
 
-    mutant_data = this_data[this_data['barcode'].isin((list(minimal_training_bcs)+list(minimal_testing_bcs)))]
-
-    # m3_conditions = sorted_m3_cols
-    # nonm3_conditions = sorted_nonm3_cols
-
-
-    # this_gene = ['GPB2','IRA1','PDE2','Diploid']
-    # this_gene = ['IRA1_nonsense','IRA1_missense','GPB2','PDE2','Diploid']
+    mutant_data = this_data[this_data['barcode'].isin(bc_list)]
 
     offset = {'IRA1_nonsense':0,
               'IRA1_missense':0.1/3,
@@ -126,14 +120,10 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
               'GPB2':0.2/3,
               'PDE2':0.3/3,}
               
-
-    # this
     this_gene_data = mutant_data[mutant_data['mutation_type'].isin(gene_list)]
-
 
     this_gene_locs = np.where(np.isin(mutant_data['barcode'].values,this_gene_data['barcode'].values))[0]
     jitters = [tools.jitter_point(0,0.01) for bc in range(len(this_gene_data[m3_conditions[0]].values)) ]
-
 
     all_conditions = list(m3_conditions) + list(nonm3_conditions)
 
@@ -198,11 +188,23 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
         twosigma_top = mean_std_bygene[gene][0]+2*mean_std_bygene[gene][1]
         twosigma_bottom = mean_std_bygene[gene][0]-2*mean_std_bygene[gene][1]
         
-        
-        
-        
         this_gene_data = mutant_data[mutant_data['mutation_type']==gene]
-        data = np.median(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+        # data = np.median(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+        data = np.mean(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+        uncertainty = np.std(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+
+        # print(np.asarray([this_gene_data[col].values for col in all_conditions]))
+
+        # data = []
+        # uncertainty = []
+
+        # for col in all_conditions:
+        #     d,u = tools.inverse_variance_mean(this_gene_data[col].values,this_gene_data[col.replace('fitness','error')].values)
+        #     data.append(d)
+        #     uncertainty.append(u)
+
+        # data = np.asarray(data)
+        # uncertainty = 2*np.sqrt(np.asarray(uncertainty))
         
        
         colors = [matplotlib.colors.to_rgba(mutant_colorset[gene]) for i in range(len(data))]
@@ -210,8 +212,8 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
         
         
         plt.scatter(range(1,len(all_conditions)+1),data,marker='o',color=colors,label=gene)
-        
-        
+
+        # plt.errorbar(range(1,len(all_conditions)+1),data,linestyle='',capsize=2,alpha=emph_alpha,yerr=uncertainty,color=mutant_colorset[gene])
         
 
         toolow = np.where(data<ymin)[0]
@@ -220,7 +222,8 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,minimal_training_bcs,minima
         if len(toolow) > 0:    
             low_counter += 1
 
-    plt.xticks(range(1,len(all_conditions)+1),[renamed_conditions[col.split('_fitness')[0]] for col in all_conditions],rotation=90)
+    # plt.xticks(range(1,len(all_conditions)+1),[renamed_conditions[col.split('_fitness')[0]] for col in all_conditions],rotation=90)
+    plt.xticks(range(1,len(all_conditions)+1),[col.split('_fitness')[0] for col in all_conditions],rotation=90)
     plt.ylim(ymin,ymax)
     plt.xlim(0.5,len(all_conditions)+0.5)
     plt.yticks(np.linspace(ymin,ymax,12),np.linspace(ymin,ymax,12))
@@ -294,38 +297,68 @@ def zscore_graph(ax,m3_z_scores,nonm3_z_scores,sorted_m3_cols,sorted_nonm3_cols,
 
     return ax
 
-def largescale_predictions_graph(ax,this_fitness,train,test,both_new,guesses,model,test_conditions):
+def largescale_predictions_graph(ax,this_fitness,train,test,both_new,guesses,model,test_conditions,dataset,this_data,n_perms=100,ymin=-1.0,ymax=1.0,guide_color='lightgray',weighted=True):
 
     plt.axhline(0,color='gray',linestyle=':')
 
     perms = np.zeros(both_new.shape[1])
 
-    n_perms = 1000
+    # this_gene_data = this_data[this_data['barcode'].isin(test_mutant_data)]
+    types = this_data[this_data['barcode'].isin(dataset['testing_bcs'])]['mutation_type'].values
+
+    # n_perms = 1000
     for i in range(n_perms):
         perm_out = tools.SVD_predictions_train_test(this_fitness,train,test,by_condition=True,permuted_conditions=True)
-        perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][model][:,i])[0] for i in range(both_new.shape[1])])
+        # perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][model][:,i])[0] for i in range(both_new.shape[1])])
+        if weighted:
+            perm = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],perm_out[5][model][:,i],types)[0] for i in range(both_new.shape[1])])
+        else:
+            perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][model][:,i])[0] for i in range(both_new.shape[1])])
+
         perms = perms + perm
         plt.plot(perm,'.',color='gray',alpha=0.01)
     plt.plot((perms/n_perms),'_',color='k',alpha=0.8,label='Permutation Average')
 
-    dumb = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
-    plt.plot(dumb,'o',markeredgecolor='k',markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
+    print(model+1,tools.var_explained_weighted_by_type(both_new,guesses[model],types)[0])
 
-    this_sse = np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])])
+    # oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
+    if weighted:
+        oneD = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[0][:,i],types)[0] for i in range(both_new.shape[1])])
+    else:
+        oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
+
+    plt.plot(oneD,'o',markeredgecolor='k',markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
+
+    
+    if weighted:
+        this_sse = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[model][:,i],types)[0] for i in range(both_new.shape[1])])
+    else:
+        this_sse = np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])])
+
         
     plt.plot(this_sse,'o',label=f'{model+1} component model',color='r',alpha=0.8)
+
+        ### eye guides
+    for i in range(int(np.ceil(len(test_conditions)/4))):
+        if (i % 2) == 0:
+            # print(i)
+            rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
+                                            linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+        
+            ax.add_patch(rect)
         
     # for i in range(100):
     #     perm_out = tools.SVD_predictions_train_test(this_fitness,train,test,by_condition=True,permuted_mutants=True)
     #     perm = np.asarray([tools.sum_squared_error(perm_out[5][5][:,i],both_new[:,i]) for i in range(both_new.shape[1])])
     #     plt.plot((dumb - perm)/(dumb - min_sse),color='orange',linestyle='--')
 
-    plt.ylabel(r'Coefficient of Determination ($R^2$)')
+    plt.ylabel(r'Weighted Coefficient of Determination ($\widetilde R^2$)')
 
     plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
     plt.legend(loc='lower left')
+    plt.xlim(-0.5,len(test_conditions)-0.5)
 
-    plt.ylim(-1.0,1.0)
+    plt.ylim(ymin,ymax)
 
     return ax
 
@@ -358,7 +391,7 @@ def predictions_figure(ax,train,test,this_fitness,both_new,guesses,model,test_co
     #     perm = np.asarray([tools.sum_squared_error(perm_out[5][5][:,i],both_new[:,i]) for i in range(both_new.shape[1])])
     #     plt.plot((dumb - perm)/(dumb - min_sse),color='orange',linestyle='--')
 
-    plt.ylabel(r'Coefficient of Determination ($R^2$)')
+    plt.ylabel(r'Weighted Coefficient of Determination ($\tilde R^2$)')
 
     plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
     plt.legend()
@@ -368,65 +401,79 @@ def predictions_figure(ax,train,test,this_fitness,both_new,guesses,model,test_co
     return ax
 
 
-def distance_comparison_figure(ax,distances_x,distances_y,geom_medians_x,geom_medians_y,avg_pairwise_x,avg_pairwise_y,gene_list,ylim='default',include_ancestor=True):
+def distance_comparison_figure(fig,gs,distances_x,distances_y,geom_medians_x,geom_medians_y,avg_pairwise_x,avg_pairwise_y,gene_list,ylim='default',include_ancestor=True):
 
-    fig = plt.figure(figsize=(4+1,4+1))
-    gs = GridSpec(2, 2, width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
+    # fig = plt.figure(figsize=(4+1,4+1))
+    # inner_gs = GridSpecFromSubplotSpec(2, 2, width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
 
-
+    # ax1 = fig.add_sub
     ## x data histogram
     ax1 = fig.add_subplot(gs[0])
     sns.despine(ax=ax1)
-    sns.distplot(distances_x,kde=False,color='gray')
+    sns.distplot(distances_x,ax=ax1,kde=False,color='gray')
+    # ax4 = outer_gs[1,1]
+    plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
 
-    # ax1.yaxis.set_visible(False)
-    # ax1.spines['left'].set_visible(False)
+
+    ax1.yaxis.set_visible(False)
+    ax1.xaxis.set_visible(False)
+    ax1.spines['left'].set_visible(False)
     # plt.xlim(0,1.5)
     plt.xticks()
 
     ## y data histogram
     ax3 = fig.add_subplot(gs[3])
     sns.despine(ax=ax3)
-    sns.distplot(distances_y,vertical=True,kde=False,color='gray')
-    # ax3.xaxis.set_visible(False)
-    # ax3.spines['bottom'].set_visible(False)
+    sns.distplot(distances_y,ax=ax3,vertical=True,kde=False,color='gray')
+    ax3.xaxis.set_visible(False)
+    ax3.yaxis.set_visible(False)
+    ax3.spines['bottom'].set_visible(False)
     # plt.ylim(0,1.5)
-    plt.yticks()
+    # plt.yticks()
 
     ## scatter 
     ax2 = fig.add_subplot(gs[2])
 
-    plt.scatter(distances_x,distances_y,alpha=0.03,color='gray')
+    ax2.scatter(distances_x,distances_y,alpha=0.03,color='gray')
 
-    plt.axvline(np.mean(distances_x),color='k',alpha=0.5)
-    plt.axhline(np.mean(distances_y),color='k',alpha=0.5)
+    ax2.axvline(np.mean(distances_x),color='k',alpha=0.5)
+    ax2.axhline(np.mean(distances_y),color='k',alpha=0.5)
 
     xs = np.linspace(0,1.2)
     # plt.plot(xs,np.sqrt(4)/np.sqrt(6)*xs,'k--')
 
+    if 'ExpNeutral' in gene_list:
+        # gene_list = [gene for gene in gene_list if gene != 'ExpNeutral']
+        ax2.plot(distance.euclidean(geom_medians_x['ExpNeutral'],np.zeros(geom_medians_x['ExpNeutral'].shape)),
+                        distance.euclidean(geom_medians_y['ExpNeutral'],np.zeros(geom_medians_y['ExpNeutral'].shape)),
+                        label=f'ExpNeutral and Ancestor',color=tools.mutant_colorset['ExpNeutral'],marker='D',fillstyle = 'left',
+                    markerfacecoloralt='k',linestyle='',markersize=7,markeredgecolor='k',alpha=0.9)
+        # plt.plot(avg_pairwise_x['ExpNeutral'],avg_pairwise_y['ExpNeutral'],marker='o',linestyle='',color=tools.mutant_colorset[gene],alpha=0.8,label=f'Average pairwise for {gene}')
 
 
-    for gene1, gene2 in combinations(gene_list,2):
-        plt.plot(distance.euclidean(geom_medians_x[gene1],geom_medians_x[gene2]),
+    for gene1, gene2 in combinations([gene for gene in gene_list if gene != 'ExpNeutral'],2):
+        ax2.plot(distance.euclidean(geom_medians_x[gene1],geom_medians_x[gene2]),
                     distance.euclidean(geom_medians_y[gene1],geom_medians_y[gene2]),
                     label=f'{gene1} and {gene2}',color=tools.mutant_colorset[gene1],marker='D',fillstyle = 'left',
                 markerfacecoloralt=tools.mutant_colorset[gene2],linestyle='',markersize=7,markeredgecolor='k',alpha=0.9)
     if include_ancestor:
         for gene1 in gene_list:
-            plt.plot(distance.euclidean(geom_medians_x[gene1],np.zeros(geom_medians_x[gene1].shape)),
+            ax2.plot(distance.euclidean(geom_medians_x[gene1],np.zeros(geom_medians_x[gene1].shape)),
                         distance.euclidean(geom_medians_y[gene1],np.zeros(geom_medians_y[gene1].shape)),
                         label=f'{gene1} and Ancestor',color=tools.mutant_colorset[gene1],marker='D',fillstyle = 'left',
                     markerfacecoloralt='k',linestyle='',markersize=7,markeredgecolor='k',alpha=0.9)
 
     for gene in gene_list:
-        plt.plot(avg_pairwise_x[gene],avg_pairwise_y[gene],marker='o',linestyle='',color=tools.mutant_colorset[gene],alpha=0.8,label=f'Average pairwise for {gene}')
+        ax2.plot(avg_pairwise_x[gene],avg_pairwise_y[gene],marker='o',linestyle='',color=tools.mutant_colorset[gene],alpha=0.8,label=f'Average pairwise for {gene}')
 
+    plt.xlabel(f'Pairwise Distance in {geom_medians_x[gene1].shape[0]} component model')
+    plt.ylabel(f'Pairwise Distance in {geom_medians_y[gene1].shape[0]} component model')
     # plt.ylim(0,1.5)
     # plt.xlim(0,1.5)
     # plt.legend(loc=(1.1,0.65),ncol=1)
-    plt.legend(loc=(1.0,0.6),ncol=1)
+    ax2.legend(loc=(1.0,0.5),ncol=1)
 
-    return fig
+    return gs
 
 
 
@@ -442,56 +489,56 @@ def Figure4(dataset,gene_list):
     model = dataset['CV_best_rank_index']
     test_conditions  = dataset['test_conditions']
 
-    fig = plt.figure(figsize=(8,8))
+    fig = plt.figure(figsize=(10,10))
 
-    ax1 = plt.subplot(221)
+    # fig = plt.figure(figsize=(4+1,4+1))
+    outer_gs = gridspec.GridSpec(2, 2, width_ratios=[5, 5], height_ratios=[5, 5])
+    # gs = GridSpec(3, 3, width_ratios=[5, 4, 1], height_ratios=[5, 1, 4])
+
+    ax1 = fig.add_subplot(outer_gs[0,0])
+    plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
 
     sns.violinplot(data=np.asarray(all_guesses),color='lightgray',alpha=0.1)
     plt.plot(np.mean(all_guesses,axis=0),'k',label='Average')
-    # plt.ylim(0,30)
+    plt.ylim(0,10)
     plt.xticks(range(len(np.mean(all_guesses,axis=0))),range(1,len(np.mean(all_guesses,axis=0))+1))
     plt.xlabel('Number of phenotypes')
-    plt.ylabel('Log Likelihood')
+    plt.ylabel('Mean Squared Error')
 
 
-    ax2 = plt.subplot(222)
+    # ax2 = fig.add_subplot(outer_gs[0,1])
+    plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+    inner_gs = gridspec.GridSpecFromSubplotSpec(2, 2,subplot_spec = outer_gs[0,1], width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
 
     # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
-    plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
-    plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
-    plt.xlabel('Measured Training Data')
-    plt.ylabel('Estimated Training Data')
-    this_min = min([np.min(both_old),np.min(dhats[model])])
-    this_max = max([np.max(both_old),np.max(dhats[model])])
-    plt.plot([this_min,this_max],[this_min,this_max],'k--')
-    xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.1))
+    # plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
+    # plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
+    # plt.xlabel('Measured Training Data')
+    # plt.ylabel('Estimated Training Data')
+    # this_min = min([np.min(both_old),np.min(dhats[model])])
+    # this_max = max([np.max(both_old),np.max(dhats[model])])
+    # plt.plot([this_min,this_max],[this_min,this_max],'k--')
+    # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.1))
 
-    plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
-                 color=sns.color_palette()[0],xycoords='axes fraction')
+    # plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
+    #              color=sns.color_palette()[0],xycoords='axes fraction')
 
-    xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.0))
-    plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
-                 color=sns.color_palette()[1],xycoords='axes fraction')
+    # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.0))
+    # plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
+    #              color=sns.color_palette()[1],xycoords='axes fraction')
     # plt.legend()
 
-    ax3 = plt.subplot(223)
+    ax3 = fig.add_subplot(outer_gs[1,0])
+    plt.text(s='C',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
 
     largescale_predictions_graph(ax3,this_fitness,train,test,both_new,guesses,model,test_conditions)
 
     plt.xlabel('Condition')
 
 
-    ax4 = plt.subplot(224)
-    x_d = 0
-    y_d = model
 
-    distance_comparison_figure(ax4,dataset['distances'][x_d],dataset['distances'][y_d],
-                                     dataset['geom_medians'][x_d],dataset['geom_medians'][y_d],
-                                     dataset['avg_pairwise'][x_d],dataset['avg_pairwise'][y_d],
-                                      gene_list,include_ancestor=False)
-
-    plt.xlabel(f'{x_d+1}')
-    plt.ylabel(f'{y_d+1}')
+    # ax5.xlabel(f'{x_d+1}')
+    # ax5.ylabel(f'{y_d+1}')
 
     plt.tight_layout()
 
@@ -499,8 +546,227 @@ def Figure4(dataset,gene_list):
 
     return fig
 
+import matplotlib.ticker as plticker
+
+def prediction_examples(fig,gs,dataset,this_data,example_conditions,model,legend=True,legend_cols=4,weighted=True,label='default'):
+
+    test_mutant_data = dataset['testing_bcs']
+    test_conditions = dataset['test_cols']
+    guesses = dataset['guesses']
+    both_new = dataset['both_new']
+    
+    this_gene_data = test_mutant_data
+    this_gene_data = this_data[this_data['barcode'].isin(test_mutant_data)]
+
+    types = this_gene_data['mutation_type'].values
+
+    this_gene_locs = range(len(this_gene_data))
+
+    for c,col in enumerate(example_conditions):
+        i = test_conditions.index(col)
+
+        ax1 = fig.add_subplot(gs[c])
+        if label == 'default':
+            plt.text(s=f'{chr(66+2*c+1)}',x=-0.2,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
+        elif label != False:
+            plt.text(s=f'{chr(66+2*c+1+label)}',x=-0.2,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+        plt.title(f'{renamed_conditions[col.replace("_fitness","")]}')
+        plt.text(s='1 component',x=0.03,y=0.9,transform=ax1.transAxes)
+        if weighted:
+            plt.text(s=fr'$\widetilde R^2=${tools.var_explained_weighted_by_type(both_new[:,i],guesses[0][:,i],types)[0]:.2f}',x=0.5,y=0.03,transform=ax1.transAxes)
+        else:
+            plt.text(s=fr'$R^2=${tools.var_explained(both_new[:,i],guesses[0][:,i])[0]:.2f}',x=0.5,y=0.03,transform=ax1.transAxes)
+        rank = 0
+        for bc in range(len(this_gene_data[col].values)):
+    #             plt.scatter(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],color=mutant_colorset[this_gene_data['gene'].values[bc]],alpha=0.6)
+            plt.scatter(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],color=mutant_colorset[this_gene_data['mutation_type'].values[bc]],alpha=0.75)
+#                 plt.errorbar(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],xerr=this_gene_data[col.replace('_fitness','_error')].values[bc],\
+#                              color=mutant_colorset[this_gene_data['mutation_type'].values[bc]],alpha=0.75)
+        xmin1,xmax1 = plt.xlim()
+        ymin1,ymax1 = plt.ylim()
+
+        ax2 = fig.add_subplot(gs[len(example_conditions)+c],sharex=ax1)
+        if label == 'default':
+            plt.text(s=f'{chr(66+2*c+1)}',x=-0.2,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+        elif label != False:
+            plt.text(s=f'{chr(66+2*c+1+label)}',x=-0.2,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+
+        rank = model
+        plt.text(s=f'{rank+1} components',x=0.03,y=0.9,transform=ax2.transAxes)
+        if weighted:
+            plt.text(s=fr'$\widetilde R^2=${tools.var_explained_weighted_by_type(both_new[:,i],guesses[rank][:,i],types)[0]:.2f}',x=0.5,y=0.03,transform=ax2.transAxes)
+        else:
+            plt.text(s=fr'$R^2=${tools.var_explained(both_new[:,i],guesses[rank][:,i])[0]:.2f}',x=0.5,y=0.03,transform=ax2.transAxes)
+
+        
+        for bc in range(len(this_gene_data[col].values)):
+    #             plt.scatter(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],color=mutant_colorset[this_gene_data['gene'].values[bc]],alpha=0.6)
+            plt.scatter(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],color=mutant_colorset[this_gene_data['mutation_type'].values[bc]],alpha=0.75)
+#                 plt.errorbar(this_gene_data[col].values[bc],guesses[rank][this_gene_locs[bc],i],xerr=this_gene_data[col.replace('_fitness','_error')].values[bc],\
+#                              color=mutant_colorset[this_gene_data['mutation_type'].values[bc]],alpha=0.75)
+        xmin2,xmax2 = plt.xlim()
+        ymin2,ymax2 = plt.ylim()
+        
+        bigmin = min([xmin1,ymin1,xmin2,ymin2])
+        bigmax = max([xmax1,ymax1,xmax2,ymax2])
+
+        for ax in [ax1,ax2]:
+            plt.sca(ax)
+            plt.plot([bigmin,bigmax],[bigmin,bigmax],'k--')
+            # plt.tight_layout()
+            plt.xlim(bigmin,bigmax)
+            plt.ylim(bigmin,bigmax)
+            plt.gca().set_aspect('equal')
+
+            loc = plticker.MultipleLocator(base=tick_base_calculator(bigmin,bigmax)) # this locator puts ticks at regular intervals
+            ax.xaxis.set_major_locator(loc)
+            ax.yaxis.set_major_locator(loc)
+            plt.tight_layout()
+            
+            if c == 0:
+                plt.ylabel('Predicted Fitness')
+        
+        plt.xlabel('Measured Fitness')
+
+        if legend and c == 0:
+            gene_list = np.unique(types)
+            legend_split = np.ceil(len(gene_list)/legend_cols)
+            for g,gene in enumerate(gene_list):
+                x_loc = 0.01+np.floor((g)/legend_split)*1.2
+                y_loc = 0.05*(legend_split-1)-0.15*(g%legend_split)-0.65
+                plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=12,
+                      fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
+
+    return fig
+
+def all_example_predictions(dataset,gene_list,this_data,example_conditions,model='default',weighted=True,per_row=10):
+
+    all_guesses = dataset['CV_all_guesses']
+    both_old = dataset['both_old']
+    dhats = dataset['dhats']
+    this_fitness  = dataset['this_fitness']
+    train  = dataset['train']
+    test = dataset['test']
+    both_new = dataset['both_new']
+    guesses = dataset['guesses']
+    test_conditions  = dataset['test_conditions']
+    if model == 'default':
+        model = dataset['CV_best_rank_index']
+
+    n_rows = int(np.ceil(len(example_conditions)/per_row))
+
+    fig = plt.figure(figsize=(2*per_row,4*n_rows))
+    outer_gs = gridspec.GridSpec(n_rows, 1)
+
+    for row in range(n_rows):
+        # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+        # inner_gs = gridspec.GridSpec(2*len(n_rows),per_row,hspace=0.1)
+        inner_gs = gridspec.GridSpecFromSubplotSpec(2,per_row,subplot_spec = outer_gs[row])
+        prediction_examples(fig,inner_gs,dataset,this_data,example_conditions[row*per_row:(row+1)*per_row],model,weighted=weighted,legend=False,label=False)
+
+    return fig
 
 
+def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,model='default',weighted=True):
+    all_guesses = dataset['CV_all_guesses']
+    both_old = dataset['both_old']
+    dhats = dataset['dhats']
+    this_fitness  = dataset['this_fitness']
+    train  = dataset['train']
+    test = dataset['test']
+    both_new = dataset['both_new']
+    guesses = dataset['guesses']
+    test_conditions  = dataset['test_conditions']
+    if model == 'default':
+        model = dataset['CV_best_rank_index']
+
+    fig = plt.figure(figsize=(4+2*len(example_conditions),8))
+
+    # fig = plt.figure(figsize=(4+1,4+1))
+    outer_gs = gridspec.GridSpec(2, 2, width_ratios=[4, 2*len(example_conditions)], height_ratios=[4, 4])
+    # gs = GridSpec(3, 3, width_ratios=[5, 4, 1], height_ratios=[5, 1, 4])
+
+    ax1 = fig.add_subplot(outer_gs[0,0])
+    plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
+
+    largescale_predictions_graph(ax1,this_fitness,train,test,both_new,guesses,model,test_conditions,dataset,this_data,weighted=weighted)
+
+    plt.xlabel('Condition')
+
+
+    # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+    inner_gs = gridspec.GridSpecFromSubplotSpec(2,len(example_conditions),subplot_spec = outer_gs[0,1],hspace=0.1)
+    prediction_examples(fig,inner_gs,dataset,this_data,example_conditions,model,weighted=weighted)
+
+    # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
+    # plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
+    # plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
+    # plt.xlabel('Measured Training Data')
+    # plt.ylabel('Estimated Training Data')
+    # this_min = min([np.min(both_old),np.min(dhats[model])])
+    # this_max = max([np.max(both_old),np.max(dhats[model])])
+    # plt.plot([this_min,this_max],[this_min,this_max],'k--')
+    # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.1))
+
+    # plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
+    #              color=sns.color_palette()[0],xycoords='axes fraction')
+
+    # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.0))
+    # plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
+    #              color=sns.color_palette()[1],xycoords='axes fraction')
+    # plt.legend()
+
+    # ax3 = fig.add_subplot(outer_gs[1,0])
+    # plt.text(s='C',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
+
+    # largescale_predictions_graph(ax3,this_fitness,train,test,both_new,guesses,model,test_conditions)
+
+    # plt.xlabel('Condition')
+
+    # ax4 = fig.add_subplot(outer_gs[1,1])
+    # plt.text(s='D',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
+
+    # largescale_predictions_graph(ax4,this_fitness,train,test,both_new,guesses,model,test_conditions)
+
+    # plt.xlabel('Condition')
+
+
+    # plt.tight_layout()
+
+    # plt.savefig('Figure4_working_testBC_withC.pdf',bbox_inches='tight')
+
+    return fig
+
+
+def Figure5(dataset,gene_list,model='default'):
+
+    all_guesses = dataset['CV_all_guesses']
+    both_old = dataset['both_old']
+    dhats = dataset['dhats']
+    this_fitness  = dataset['this_fitness']
+    train  = dataset['train']
+    test = dataset['test']
+    both_new = dataset['both_new']
+    guesses = dataset['guesses']
+    test_conditions  = dataset['test_conditions']
+    if model == 'default':
+        model = dataset['CV_best_rank_index']
+
+
+    fig = plt.figure(figsize=(8,8))
+
+    outer_gs = gridspec.GridSpec(2, 2, width_ratios=[5, 5], height_ratios=[5, 5])
+    inner_gs = gridspec.GridSpecFromSubplotSpec(2, 2,subplot_spec = outer_gs[1,1], width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
+
+    x_d = 0
+    y_d = model
+
+    distance_comparison_figure(fig,inner_gs,dataset['distances'][x_d],dataset['distances'][y_d],
+                                     dataset['centroids'][x_d],dataset['centroids'][y_d],
+                                     dataset['avg_pairwise'][x_d],dataset['avg_pairwise'][y_d],
+                                      gene_list,include_ancestor=False)
+
+    return fig
 
 
 

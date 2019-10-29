@@ -71,7 +71,11 @@ renamed_conditions = {
                     '1.5%':'Baffle',
                   '1.6%':'Baffle, 1.6% Gluc',
                   '1.7%':'Baffle, 1.7% Gluc',
-                  '1.8%':'Baffle, 1.8% Gluc'}
+                  '1.8%':'Baffle, 1.8% Gluc',
+                  '2.5%':'Baffle, 2.5% Gluc',
+                  'Ben0.4':'Baffle, 0.4 Benomyl',
+                  'Ben2':'Baffle, 2 Benomyl',
+                  }
 
 mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  # 'Diploid':'#fb9a99', # light red
@@ -80,7 +84,7 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  # 'Diploid + IRA1':'#e31a1c',
                  # 'Diploid + IRA2':'#e31a1c',
                  'Diploid':'#e31a1c',
-                 'Diploid + Chr11Amp':'#fb9a99', # dark red for adaptive diploids
+                 'Diploid + Chr11Amp':'#fb9a99', # light red for adaptive diploids
                  'Diploid + Chr12Amp':'#fb9a99',
                  'Diploid + IRA1':'#fb9a99',
                  'Diploid + IRA2':'#fb9a99',
@@ -96,14 +100,14 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  'NotSequenced':'gray',
                  'NotSequenced_adaptive':'gray',
                  'PDE2':'#ff7f00',  # dark orange
-                 'RAS2':'#ffff99', # yellow
+                 'RAS2':'#b15928', # brown
                  'SCH9':'#6a3d9a', # dark purple for TOR mutants
                  'TFS1':'#6a3d9a',
                  'TOR1':'#6a3d9a',
                  'KOG1':'#6a3d9a', 
-                 'other':'k',
-                 'other_adaptive':'k',
-                 'ExpNeutral':'k'}
+                 'other':'lightgray',
+                 'other_adaptive':'darkgray',
+                 'ExpNeutral':'k',}
 
 # old_colorset = {condition:sns.color_palette('Accent',len(old_conditions.keys()))[i] for i,condition in enumerate(old_conditions.keys())}
 # bigbatch_colorset = {condition:sns.color_palette('Paired',len(bigbatch_conditions.keys()))[i] for i,condition in enumerate(bigbatch_conditions.keys())}
@@ -268,6 +272,39 @@ def var_explained(data,model):
     
     return 1 - ss_res/ss_tot, ss_res, ss_tot
 
+def var_explained_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
+
+  counts = np.unique(np.asarray(types),return_counts=True)
+
+  like_type_count_dict = {mut_type:count for mut_type,count in zip(*counts)}
+
+  like_type_counts = [like_type_count_dict[mut_type] if mut_type not in exceptions.keys() else exceptions[mut_type] for mut_type in types]
+
+  if len(data.shape) > 1:
+    like_type_counts = np.repeat(like_type_counts,data.shape[1]).reshape(len(like_type_counts),data.shape[1])
+
+  ss_res = np.sum((data-model)**2/like_type_counts)
+  ss_tot = np.sum((data-np.mean(data))**2/like_type_counts)
+  
+  return 1 - ss_res/ss_tot, ss_res, ss_tot
+
+# def mse(data,model):
+
+#     return np.sum(np.square(new_fitness-predicted_new))
+
+
+# def mse_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
+
+#     counts = np.unique(np.asarray(types),return_counts=True)
+
+#     like_type_count_dict = {mut_type:count for mut_type,count in zip(*counts)}
+
+#     like_type_counts = [like_type_count_dict[mut_type] if mut_type not in exceptions.keys() else exceptions[mut_type] for mut_type in types]
+
+#     like
+
+#     return np.sum(np.square(new_fitness-predicted_new)/like_type
+
 def sum_squared_error(data,model):
 
     return np.sum(np.square(data-model))
@@ -318,10 +355,8 @@ def geometric_median(X, eps=1e-5):
         y = y1
 
 def centroid(arr):
-    length = arr.shape[0]
-    sum_x = np.sum(arr[:, 0])
-    sum_y = np.sum(arr[:, 1])
-    return sum_x/length, sum_y/length
+    
+    return np.mean(arr,axis=0)
 
 
 def SVD_condition_predictions(data,old_c,new_c,n_mutants,permuted_mutants=False,permuted_conditions=False,mse=False):
@@ -890,7 +925,49 @@ def SVD_fits(data,mse=False):
       
     return fits, model_vars, bic_1, bic_2, bic_3
 
-def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutation=False):
+
+def svd_noise_comparison_detection(this_f,err,n_pulls,permutation=False):
+    
+    U, s, V = np.linalg.svd(this_f)
+    
+    max_d = min(this_f.shape)
+
+    if type(err) != np.float:
+        error = err.flatten()
+    else:
+        error = [err for i in range(len(this_f.flatten()))]
+
+    # SVD on error alone
+    noise_s_list = []
+    perm_s_list = []
+    for i in range(n_pulls):
+        # this_set = np.asarray([np.random.normal(0,np.sqrt(error[i])) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+        this_set = np.asarray([np.random.normal(0,error[i]) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+
+        U, noise_s, V = np.linalg.svd(this_set)
+        noise_s_list.append(noise_s)
+
+    if permutation:
+        for i in range(n_pulls):
+            this_set = np.random.permutation(this_f.ravel()).reshape(this_f.shape[0],this_f.shape[1])
+            U, perm_s, V = np.linalg.svd(this_set)
+            perm_s_list.append(perm_s)
+
+    # print(np.mean(noise_s_list,axis=0))
+    # print(s)
+    # print(s**2/np.sum(np.square(s)))
+    
+    # Mean empirical noise max
+    mean_noise_max = np.mean(noise_s_list,axis=0)[0] 
+
+    max_detected = np.where(s < mean_noise_max)[0][0]
+    # print(np.where(s < mean_noise_max))
+    max_s = s[max_detected-1]**2/np.sum(np.square(s))
+    next_s = s[max_detected]**2/np.sum(np.square(s))
+
+    return max_detected
+
+def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutation=False,output_max_detected=False):
     
     U, s, V = np.linalg.svd(this_f)
     
@@ -926,10 +1003,13 @@ def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutatio
     mean_noise_max = np.mean(noise_s_list,axis=0)[0] 
     plt.axhline(mean_noise_max**2/np.sum(np.square(s)),linestyle=':',color = 'k',alpha=0.8)
 
-    max_detected = np.where(s < noise_s[0])[0][0]
+    max_detected = np.where(s < mean_noise_max)[0][0]
     max_s = s[max_detected-1]**2/np.sum(np.square(s))
     next_s = s[max_detected]**2/np.sum(np.square(s))
+    # print(np.where(s > mean_noise_max))
+    # print(np.where(s < mean_noise_max))
     print(max_s,next_s,next_s/max_s)
+    print(max_detected)
     
     plt.xlabel('Number of Components')
     plt.ylabel('Variance explained by component')
@@ -959,7 +1039,10 @@ def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutatio
 # #                             patchB=el,
 # #                             connectionstyle="angle3,angleA=0,angleB=-90")
 #                    ))
-    return ax
+    if output_max_detected:
+      return ax, max_detected
+    else:
+      return ax
         
 def make_folds(n_mutants,n_conditions,n_folds):
 
@@ -971,7 +1054,6 @@ def make_folds(n_mutants,n_conditions,n_folds):
     folds = [(new_mutants[fold],new_conditions[fold]) for fold in range(n_folds)]
     
     return folds
-        
         
 def svd_cross_validation_figure(ax,this_f,err,folds,n_permutations=0,mse=False,show_folds=True):
     
@@ -1029,7 +1111,7 @@ def plot_mutant_components(ax,U,this_data,x_component,y_component,mutant_colorse
 
     return ax
 
-def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds):
+def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant_sets=False):
 
     best_guesses = {}
     all_guesses = []
@@ -1038,8 +1120,14 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds):
         first_set =  sorted(np.random.choice(range(len(cols_avail)),int(len(cols_avail)/2),replace=False))
         second_set = [i for i in range(len(cols_avail)) if i not in first_set]
 
-        training_mutants = sorted(np.random.choice(mutants_avail,int(len(mutants_avail)/2),replace=False))
-        testing_mutants = [i for i in mutants_avail if i not in training_mutants]
+        if not fixed_mutant_sets:
+
+          training_mutants = sorted(np.random.choice(mutants_avail,int(len(mutants_avail)/2),replace=False))
+          testing_mutants = [i for i in mutants_avail if i not in training_mutants]
+        else:
+          training_mutants = mutants_avail[0]
+          testing_mutants = mutants_avail[1]
+
 
         cols_avail = np.asarray(cols_avail)
 
@@ -1077,7 +1165,7 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds):
         max_rank = min([len(train[0]),len(train[1])])
 
         # output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True)
-        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,likelihood=True,error=this_error)
+        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True,error=this_error)
 
         best_by_rank = output[0]
         all_guesses.append(best_by_rank)
@@ -1086,7 +1174,7 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds):
     return best_guesses, all_guesses
 
 
-def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list):
+def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list,fixed_mutant_sets=False):
 
     data_situation = {}
 
@@ -1097,9 +1185,12 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
 
     ## CROSS VALIDATION STAGE ON TRAINING DATA
     cols_avail = train_cols
-    CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,1000)
+    if not fixed_mutant_sets:
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,1000)
+    else:
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,[training_bcs,testing_bcs],1000,fixed_mutant_sets=True)
 
-    CV_best_rank_index =  np.where(np.mean(CV_all_guesses,axis=0)==max(np.mean(CV_all_guesses,axis=0)))[0][0]
+    CV_best_rank_index =  np.where(np.mean(CV_all_guesses,axis=0)==min(np.mean(CV_all_guesses,axis=0)))[0][0]
 
     data_situation['CV_best_guesses'] = CV_best_guesses
     data_situation['CV_all_guesses'] = CV_all_guesses
@@ -1167,37 +1258,57 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
     max_rank = min([len(train[0]),len(train[1])])
 
     data_situation['mut_locs'] = []
+    data_situation['cond_locs'] = []
     data_situation['distances'] = []
     data_situation['geom_medians'] = []
+    data_situation['centroids'] = []
     data_situation['avg_pairwise'] = []
     data_situation['distance_from_median'] = []
+    data_situation['distance_from_centroid'] = []
+
+    
     ### LOCATIONS
     for model in range(1,max_rank+1):
         fit, train_muts, test_muts, train_cond, test_cond = SVD_mixnmatch_locations(this_fitness,train,test,range(model))
         all_muts = np.concatenate((train_muts,test_muts))
         all_muts = all_muts[np.argsort(np.concatenate((train[1],test[1])))]
 
+        all_cond = np.concatenate((train_cond,test_cond))
+        data_situation['cond_locs'].append(all_cond)
+
         data_situation['mut_locs'].append(all_muts)
         data_situation['distances'].append(distance.pdist(all_muts))
 
         geom_medians = {}
+        centroids = {}
         avg_pairwise = {}
         distances_from_median = {}
+        distances_from_centroid = {}
 
         for gene in gene_list:
             these_locs = np.where(np.isin(used_mutants,this_data[this_data['mutation_type']==gene]['barcode'].values))
+
             geom_medians[gene] = geometric_median(all_muts[these_locs,:][0])
+
+            centroids[gene] = centroid(all_muts[these_locs,:][0])
+            
             avg_pairwise[gene] = np.mean(distance.pdist(all_muts[these_locs,:][0]))
 
 
-            distances_from_median[gene] = []
-            for loc in these_locs[0]:
-                distances_from_median[gene].append(distance.euclidean(all_muts[loc,:][0],geom_medians[gene]))
+
+            distances_from_median[gene] = distance.cdist(all_muts[these_locs,:][0],[geom_medians[gene]]).flatten()
+            distances_from_centroid[gene] = distance.cdist(all_muts[these_locs,:][0],[centroids[gene]]).flatten()
+            # distances_from_median[gene] = []
+            # for loc in these_locs[0]:
+                # distances_from_median[gene].append(distance.euclidean(all_muts[loc,:][0],geom_medians[gene]))
 
 
         data_situation['geom_medians'].append(geom_medians)
+        data_situation['centroids'].append(centroids)
         data_situation['avg_pairwise'].append(avg_pairwise)
         data_situation['distance_from_median'].append(distances_from_median)
+        data_situation['distance_from_centroid'].append(distances_from_centroid)
+
 
     return data_situation
 
@@ -1205,6 +1316,16 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
 class NullObjectHandler(object):
     def legend_artist(self, legend, orig_handle, fontsize, handlebox):
         pass
+
+def tick_base_calculator(bigmin,bigmax,targets=[0.1,0.2,0.3,0.4,0.5,1.0,2.0,5.0,10.0],num_ticks=3):
+
+  farthest = np.max([abs(bigmin),abs(bigmax)])
+
+  for target in targets:
+    if int(farthest/target)+1 == num_ticks:
+      return target
+
+  return 1.0
 
 def text_color_legend(ax, visible_handles=False, legend_prop={'weight':'semibold'}, bbox_to_anchor=(0,0), **kargs):
     """text_color_legend() -> eliminates legend key and simply colors labels with the color of the lines."""
