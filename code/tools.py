@@ -63,7 +63,7 @@ renamed_conditions = {
                   'Resp_5Day_Transfer':'5 Day',
                   'Resp_6Day_Transfer':'6 Day',
                   'Resp_7Day_Transfer':'7 Day',
-                  'DMSO':'+ DMSO',
+                  'DMSO':'DMSO',
                   # 'Geldanamycin8.5uM':'+ 8.5uM GdA(1)',
                   'Geldanamycin8.5uM':'8.5uM GdA',
                   '1.4%':'Baffle, 1.4% Gluc',
@@ -101,8 +101,9 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  'NotSequenced_adaptive':'gray',
                  'PDE2':'#ff7f00',  # dark orange
                  'RAS2':'#b15928', # brown
+                 'TFS1':'#fdbf6f', # light orange
+                 
                  'SCH9':'#6a3d9a', # dark purple for TOR mutants
-                 'TFS1':'#6a3d9a',
                  'TOR1':'#6a3d9a',
                  'KOG1':'#6a3d9a', 
                  'other':'lightgray',
@@ -112,23 +113,129 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
 # old_colorset = {condition:sns.color_palette('Accent',len(old_conditions.keys()))[i] for i,condition in enumerate(old_conditions.keys())}
 # bigbatch_colorset = {condition:sns.color_palette('Paired',len(bigbatch_conditions.keys()))[i] for i,condition in enumerate(bigbatch_conditions.keys())}
 
-condition_colorset = {'13': (0.9921568627450981, 0.7529411764705882, 0.5254901960784314),
- '18': (1.0, 1.0, 0.6),
- '1BB_0.2MKCl': (0.8901960784313725, 0.10196078431372549, 0.10980392156862745),
- '1BB_0.2MNaCl': (0.984313725490196, 0.6039215686274509, 0.6),
- '1BB_0.5%Raf': (1.0, 0.4980392156862745, 0.0),
- '1BB_1%Raf': (0.0, 0.0, 0.0),
- '1BB_0.5MKCl': (0.9921568627450981, 0.7490196078431373, 0.43529411764705883),
- '1BB_1%Gly': (0.792156862745098, 0.6980392156862745, 0.8392156862745098),
- '1BB_1.4%Gluc': (0.6980392156862745, 0.8745098039215686, 0.5411764705882353),
- '1BB_1.8%Gluc': (0.2, 0.6274509803921569, 0.17254901960784313),
- '1BB_Baffle': (0.12156862745098039, 0.47058823529411764, 0.7058823529411765),
- '1BB_M3': (0.6509803921568628, 0.807843137254902, 0.8901960784313725),
- '20': (0.2196078431372549, 0.4235294117647059, 0.6901960784313725),
- '21': (0.9411764705882353, 0.00784313725490196, 0.4980392156862745),
- '23': (0.7490196078431373, 0.3568627450980392, 0.09019607843137253),
- '3': (0.4980392156862745, 0.788235294117647, 0.4980392156862745),
- '6': (0.7450980392156863, 0.6823529411764706, 0.8313725490196079)}
+condition_categories = {
+                
+                  '19':'M3',
+                  'M3_Batch_3':'M3',
+                  'M3_Batch_6':'M3',
+                  'M3_Batch_13':'M3',
+                  'M3_Batch_18':'M3',
+                  'M3_Batch_20':'M3',
+                  'M3_Batch_21':'M3',
+                  'M3_Batch_23':'M3',
+                  '1BB_M3':'M3',
+
+                  '1BB_Baffle':'glucose',
+                  '1.4%':'glucose',
+                  '1.5%':'glucose',
+                  '1.6%':'glucose',
+                  '1.7%':'glucose',
+                  '1.8%':'glucose',
+                  '2.5%':'glucose',
+                  '1BB_1.4%Gluc' :'glucose',
+                  '1BB_1.8%Gluc' :'glucose',
+
+                  '1BB_0.2MNaCl' :'salt',
+                  '1BB_0.5MNaCl' :'salt',
+                  '1BB_0.2MKCl' :'salt',
+                  '1BB_0.5MKCl' :'salt',
+
+                  '1BB_8.5uMGdA' :'drugs',
+                  '1BB_17uMGdA' :'drugs',
+                  '1BB_2ugFlu' :'drugs',
+                  '1BB_0.5ugFlu' :'drugs',
+                  'DMSO':'drugs',
+                  'Geldanamycin8.5uM':'drugs',
+                  'Ben0.4':'drugs',
+                  'Ben2':'drugs',
+
+                  '1BB_1%Raf' :'carbons',
+                  '1BB_0.5%Raf' :'carbons',
+                  '1BB_1%Gly' :'carbons',
+                  '1BB_1%EtOH' :'carbons',
+                  '1BB_SucRaf' :'carbons',
+
+                  'Ferm_44hr_Transfer':'ferm',
+                  'Ferm_40hr_Transfer':'ferm',
+                  'Ferm_54hr_Transfer':'ferm',
+                  'Ferm_50hr_Transfer':'ferm',
+
+                  'Resp_24hr_Transfer':'resp/stat',
+                  'Resp_3Day_Transfer':'resp/stat',
+                  'Resp_4Day_Transfer':'resp/stat',
+                  'Resp_5Day_Transfer':'resp/stat',
+                  'Resp_6Day_Transfer':'resp/stat',
+                  'Resp_7Day_Transfer':'resp/stat',
+
+                  }
+
+
+# condition_colorset = {'13': (0.9921568627450981, 0.7529411764705882, 0.5254901960784314),
+#  '18': (1.0, 1.0, 0.6),
+#  '1BB_0.2MKCl': (0.8901960784313725, 0.10196078431372549, 0.10980392156862745),
+#  '1BB_0.2MNaCl': (0.984313725490196, 0.6039215686274509, 0.6),
+#  '1BB_0.5%Raf': (1.0, 0.4980392156862745, 0.0),
+#  '1BB_1%Raf': (0.0, 0.0, 0.0),
+#  '1BB_0.5MKCl': (0.9921568627450981, 0.7490196078431373, 0.43529411764705883),
+#  '1BB_1%Gly': (0.792156862745098, 0.6980392156862745, 0.8392156862745098),
+#  '1BB_1.4%Gluc': (0.6980392156862745, 0.8745098039215686, 0.5411764705882353),
+#  '1BB_1.8%Gluc': (0.2, 0.6274509803921569, 0.17254901960784313),
+#  '1BB_Baffle': (0.12156862745098039, 0.47058823529411764, 0.7058823529411765),
+#  '1BB_M3': (0.6509803921568628, 0.807843137254902, 0.8901960784313725),
+#  '20': (0.2196078431372549, 0.4235294117647059, 0.6901960784313725),
+#  '21': (0.9411764705882353, 0.00784313725490196, 0.4980392156862745),
+#  '23': (0.7490196078431373, 0.3568627450980392, 0.09019607843137253),
+#  '3': (0.4980392156862745, 0.788235294117647, 0.4980392156862745),
+#  '6': (0.7450980392156863, 0.6823529411764706, 0.8313725490196079)}
+
+condition_colorset = {
+ '1.4%': (0.8503344867358708, 0.14686658977316416, 0.13633217993079583),
+ '1.5%': (0.9874509803921568, 0.5411764705882353, 0.41568627450980394),
+ '1.6%': (0.9466666666666667, 0.26823529411764707, 0.19607843137254902),
+ '1.7%': (0.9835755478662053, 0.4127950788158401, 0.28835063437139563),
+ '1.8%': (0.7364705882352941, 0.08, 0.10117647058823528),
+ '19': (0.8870588235294118, 0.8870588235294118, 0.8870588235294118),
+ '1BB_0.2MKCl': (0.9921568627450981, 0.6564705882352941, 0.3827450980392157),
+ '1BB_0.2MNaCl': (0.9937254901960785, 0.8501960784313726, 0.7043137254901961),
+ '1BB_0.5%Raf': (0.681045751633987, 0.8718954248366013, 0.6562091503267974),
+ '1BB_0.5MKCl': (0.9545098039215686, 0.44, 0.10666666666666666),
+ '1BB_0.5MNaCl': (0.7709803921568628,0.2541176470588235,0.007058823529411764),
+ '1BB_0.5ugFlu': (0.21568627450980393, 0.5294117647058824, 0.7542483660130719),
+ '1BB_1%EtOH': (0.21568627450980393, 0.6287581699346405, 0.3333333333333333),
+ '1BB_1%Gly': (0.8606689734717416, 0.9458362168396771, 0.8385697808535179),
+ '1BB_1%Raf': (0.45176470588235296, 0.7670895809304115, 0.4612072279892349),
+ '1BB_1.4%Gluc': (0.9969242599000384, 0.8961937716262975, 0.8489042675893886),
+ '1BB_1.8%Gluc': (0.9913725490196079, 0.7913725490196079, 0.7082352941176471),
+ '1BB_17uMGdA': (0.5105882352941177, 0.7323029603998462, 0.8588389081122645),
+ '1BB_2ugFlu': (0.6718954248366014, 0.8143790849673203, 0.9006535947712418),
+ '1BB_8.5uMGdA': (0.34646674356016915, 0.632402921953095, 0.8106728181468666),
+ '1BB_Baffle': (0.9882352941176471, 0.6715417147251057, 0.5605382545174933),
+ '1BB_M3': (0.25098039215686274, 0.25098039215686274, 0.25098039215686274),
+ '1BB_SucRaf': (0.04359861591695502, 0.4648212226066897, 0.20369088811995384),
+ '2.5%': (0.5946174548250673, 0.04613610149942329, 0.07558631295655516),
+ 'Ben0.4': (0.10557477893118032, 0.41262591311034214, 0.6859669357939254),
+ 'Ben2': (0.03137254901960784, 0.301914648212226, 0.588404459823145),
+ 'DMSO': (0.7993540945790081, 0.8740792003075739, 0.944882737408689),
+ 'Ferm_40hr_Transfer': (0.7019607843137254,0.803921568627451,0.8901960784313725),
+ 'Ferm_44hr_Transfer': (0.984313725490196,0.7058823529411765,0.6823529411764706),
+ 'Ferm_50hr_Transfer': (0.8, 0.9215686274509803, 0.7725490196078432),
+ 'Ferm_54hr_Transfer': (0.8705882352941177,0.796078431372549,0.8941176470588236),
+ 'Geldanamycin8.5uM': (0.8825067281814687,0.929196462898885,0.9724413687043445),
+ 'M3_Batch_13': (0.47843137254901963,0.47843137254901963,0.47843137254901963),
+ 'M3_Batch_18': (0.8087812379853903, 0.8087812379853903, 0.8087812379853903),
+ 'M3_Batch_20': (0.7105882352941176, 0.7105882352941176, 0.7105882352941176),
+ 'M3_Batch_21': (0.11380238369857748,0.11380238369857748,0.11380238369857748),
+ 'M3_Batch_23': (0.9538638985005767, 0.9538638985005767, 0.9538638985005767),
+ 'M3_Batch_3': (0.586082276047674, 0.586082276047674, 0.586082276047674),
+ 'M3_Batch_6': (0.3713033448673587, 0.3713033448673587, 0.3713033448673587),
+ 'Resp_24hr_Transfer': (0.8207612456747405,0.8218992695117262,0.9044982698961938),
+ 'Resp_3Day_Transfer': (0.9265974625144175,0.919769319492503,0.9557093425605536),
+ 'Resp_4Day_Transfer': (0.6878892733564014,0.6835832372164552,0.829834678969627),
+ 'Resp_5Day_Transfer': (0.5513264129181085,0.537916186082276,0.7524490580545944),
+ 'Resp_6Day_Transfer': (0.440722798923491,0.36772010765090346,0.6653902345251825),
+ 'Resp_7Day_Transfer': (0.3405767012687428,0.1742560553633218,0.5709342560553633)}
+
+
 
 def flatten(list2d):
     return list(itertools.chain.from_iterable(list2d))
@@ -288,22 +395,6 @@ def var_explained_weighted_by_type(data,model,types,exceptions={'adaptive_other'
   
   return 1 - ss_res/ss_tot, ss_res, ss_tot
 
-# def mse(data,model):
-
-#     return np.sum(np.square(new_fitness-predicted_new))
-
-
-# def mse_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
-
-#     counts = np.unique(np.asarray(types),return_counts=True)
-
-#     like_type_count_dict = {mut_type:count for mut_type,count in zip(*counts)}
-
-#     like_type_counts = [like_type_count_dict[mut_type] if mut_type not in exceptions.keys() else exceptions[mut_type] for mut_type in types]
-
-#     like
-
-#     return np.sum(np.square(new_fitness-predicted_new)/like_type
 
 def sum_squared_error(data,model):
 
@@ -689,6 +780,121 @@ def SVD_predictions_train_test_mixnmatch(data,train,test,n_components_per_set,by
         
     return fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits, component_sets, guesses
 
+def SVD_locations(this_data,train_cols,test_cols,training_bcs,testing_bcs,model,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
+    
+    """ 
+    Bi-cross validation using multiple folds of data matrix. 
+
+    Method from Owen and Perry 2009.
+
+    For each fold, we have the following data matrix:
+
+                        "new conditions"  "old conditions"
+    "new mutants"              A                  B
+    "old mutants"              C                  D
+
+    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
+    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
+
+    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
+
+        A - B * D_k^+ * C 
+
+    """
+
+    fitness_cols = np.concatenate((train_cols,test_cols))
+
+    fitness = this_data[fitness_cols].values
+
+    n_mutants = fitness.shape[0]
+    n_conditions = fitness.shape[1]
+
+    train_conditions = train_cols
+    train_locs = np.where(np.isin(fitness_cols,train_conditions))[0]
+
+    test_conditions = test_cols
+    test_locs = np.where(np.isin(fitness_cols,test_conditions))[0]
+
+    all_locs = sorted(list(train_locs)+list(test_locs))
+
+    used_mutants = [bc for bc in this_data['barcode'].values if bc in (list(training_bcs) + list(testing_bcs))]
+
+    all_mut_locs =sorted(list(np.where(np.isin(this_data['barcode'].values,used_mutants))[0]))
+
+    this_data = fitness[all_mut_locs,:][:,all_locs]
+    new_train_locs = np.where(np.isin(all_locs,train_locs))[0]
+    new_test_locs = np.where(np.isin(all_locs,test_locs))[0]  
+
+    train = [new_train_locs,np.where(np.isin(used_mutants,training_bcs))[0]]
+    test = [new_test_locs,np.where(np.isin(used_mutants,testing_bcs))[0]]
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    component_set = range(model)
+
+    assert len(train_m) + len(test_m) == this_data.shape[0]
+    assert len(train_c) + len(test_c) == this_data.shape[1]
+
+    max_rank = min([len(train_c),len(train_m)])
+
+    fits_by_condition = []
+    fits_by_mutant = []
+    mean_fits =[]
+
+    both_old = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+
+    U2, s2, V2 = np.linalg.svd(both_old)
+
+    mut_new = this_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
+    cond_new = this_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
+    both_new = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
+
+    if mse:
+        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
+    else: 
+        mean_fits = var_explained(both_new,mean_mutant_prediction)[0]
+
+    fit_by_rank = []
+
+    guesses = []
+
+    # new_s = np.asarray(list(s2[component_set]) + list(np.zeros(len(s2)-len(component_set))))
+    new_s = np.asarray([s2[s] if s in component_set else 0 for s in range(len(s2))]  )
+    # print(new_s)
+    S2 = np.zeros((U2.shape[0],V2.shape[0]))
+    S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
+
+    train_mutant_locs = U2[:,component_set]
+    train_condition_locs = np.dot(S2,V2)[component_set,:]
+
+    D_hat = np.dot(U2[:,component_set],np.dot(S2,V2)[component_set,:])
+
+    ## do least squares linear regression explicitly to get the locations.G
+
+    reg_test_condition = LinearRegression(fit_intercept=False).fit(train_mutant_locs,cond_new)
+    test_condition_locs = reg_test_condition.coef_
+
+    reg_test_mutant = LinearRegression(fit_intercept=False).fit(train_condition_locs.swapaxes(0,1),mut_new.swapaxes(0,1))
+    test_mutant_locs = reg_test_mutant.coef_.swapaxes(0,1)
+
+    A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+
+    lin_reg_A_hat = np.dot(test_mutant_locs.swapaxes(0,1),test_condition_locs.swapaxes(0,1))
+
+    print(len(component_set),var_explained(both_new,A_hat)[0])
+
+    assert np.all(np.isclose(A_hat,lin_reg_A_hat)) # verify that the prediction we get is the same both ways
+
+        
+    return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs
+
+
 def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
     
     """ 
@@ -754,28 +960,31 @@ def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,per
     S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
 
     train_mutant_locs = U2[:,component_set]
-    train_condition_locs = np.dot(S2,V2)[component_set,:]
+    # train_condition_locs = np.dot(S2,V2)[component_set,:]
+    train_condition_locs = V2[component_set,:]
 
     D_hat = np.dot(U2[:,component_set],np.dot(S2,V2)[component_set,:])
 
-    ## do least squares linear regression explicitly to get the locations.G
+    ## do least squares linear regression explicitly to get the locations.
 
-    reg_test_condition = LinearRegression(fit_intercept=False).fit(train_mutant_locs,cond_new)
+    # to find best test condition locations, we fold the Sigma matrix into the training mutant locations
+    reg_test_condition = LinearRegression(fit_intercept=False).fit(np.dot(U2,S2)[:,component_set],cond_new)
     test_condition_locs = reg_test_condition.coef_
 
-    reg_test_mutant = LinearRegression(fit_intercept=False).fit(train_condition_locs.swapaxes(0,1),mut_new.swapaxes(0,1))
+    # to find best test mutant locations, we fold the Sigma matrix into the training condition locations
+    reg_test_mutant = LinearRegression(fit_intercept=False).fit(np.dot(S2,V2)[component_set,:].swapaxes(0,1),mut_new.swapaxes(0,1))
     test_mutant_locs = reg_test_mutant.coef_.swapaxes(0,1)
 
     A_hat = np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
 
-    lin_reg_A_hat = np.dot(test_mutant_locs.swapaxes(0,1),test_condition_locs.swapaxes(0,1))
+    lin_reg_A_hat = np.dot(test_mutant_locs.swapaxes(0,1),np.dot(S2[:,component_set],test_condition_locs.swapaxes(0,1))[component_set,:])
 
     print(len(component_set),var_explained(both_new,A_hat)[0])
 
     assert np.all(np.isclose(A_hat,lin_reg_A_hat)) # verify that the prediction we get is the same both ways
 
         
-    return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs
+    return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs, S2
 
 
 def SVD_predictions(data,folds,n_mutants,n_conditions,n_folds,permuted_mutants=False,permuted_conditions=False,mse=False,by_condition=False,by_mutant=False):
@@ -1111,7 +1320,7 @@ def plot_mutant_components(ax,U,this_data,x_component,y_component,mutant_colorse
 
     return ax
 
-def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant_sets=False):
+def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant_sets=False,full_output=False,mse=True):
 
     best_guesses = {}
     all_guesses = []
@@ -1165,13 +1374,15 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant
         max_rank = min([len(train[0]),len(train[1])])
 
         # output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True)
-        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True,error=this_error)
+        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=mse,error=this_error)
 
         best_by_rank = output[0]
         all_guesses.append(best_by_rank)
         best_guesses[f'{iteration}'] = (min(best_by_rank),np.where(best_by_rank==min(best_by_rank))[0][0] +1)
-
-    return best_guesses, all_guesses
+    if not full_output:
+      return best_guesses, all_guesses
+    else:
+      return best_guesses, all_guesses, output
 
 
 def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list,fixed_mutant_sets=False):
@@ -1237,6 +1448,7 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
     new_cond = this_fitness[np.repeat(all_m,len(test_c)),np.tile(test_c,len(all_m))].reshape(len(all_m),len(test_c))
 
     data_situation['this_fitness'] = this_fitness
+    data_situation['this_error'] = this_data[[col.replace('fitness','error') for col in fitness_cols]].values[all_mut_locs,:][:,all_locs]
     data_situation['train'] = train
     data_situation['test'] = test
     data_situation['both_new'] = both_new
@@ -1265,13 +1477,17 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
     data_situation['avg_pairwise'] = []
     data_situation['distance_from_median'] = []
     data_situation['distance_from_centroid'] = []
+    data_situation['dimension_weights'] = []
 
     
     ### LOCATIONS
     for model in range(1,max_rank+1):
-        fit, train_muts, test_muts, train_cond, test_cond = SVD_mixnmatch_locations(this_fitness,train,test,range(model))
+        fit, train_muts, test_muts, train_cond, test_cond, weights = SVD_mixnmatch_locations(this_fitness,train,test,range(model))
         all_muts = np.concatenate((train_muts,test_muts))
         all_muts = all_muts[np.argsort(np.concatenate((train[1],test[1])))]
+
+        data_situation['dimension_weights'].append(weights)
+
 
         all_cond = np.concatenate((train_cond,test_cond))
         data_situation['cond_locs'].append(all_cond)
@@ -1337,3 +1553,51 @@ def text_color_legend(ax, visible_handles=False, legend_prop={'weight':'semibold
     for handle, text in zip(handles, L.get_texts()):
         text.set_color(handle.get_facecolor() if handle.get_fill() else handle.get_edgecolor())
     return L
+
+
+def select_train_test_mutants(fitness_data,max_train=4,max_test=10,exclusion_list=['other','NotSequenced','NotSequenced_adaptive','ExpNeutral'],include_all_neutrals=True):
+
+    mutation_types = np.unique(fitness_data['mutation_type'].values)
+
+    train_list = []
+
+    for mut_type in mutation_types:
+        if not mut_type in exclusion_list:
+            this_mut_type = fitness_data[(fitness_data['mutation_type'].isin([mut_type]))]
+            n_samples =  min([int(np.floor(len(this_mut_type.index)/2)),max_train])
+            # print(mut_type,len(this_mut_type.index),n_samples)
+        
+            train_list = sorted(np.unique(train_list + list(np.random.choice(this_mut_type['barcode'].values,n_samples,replace=False))))
+
+    # print(len(train_list))
+    test_list = []
+
+    for mut_type in mutation_types:
+        if not mut_type in exclusion_list:
+            this_mut_type = fitness_data[(fitness_data['mutation_type'].isin([mut_type]))]
+            options = [bc for bc in this_mut_type['barcode'].values if bc not in train_list]
+            n_samples = min([int(np.floor(len(options))),max_test])
+            # print(mut_type,len(this_mut_type.index),n_samples)
+            test_list = sorted(np.unique(test_list + list(np.random.choice(options,n_samples,replace=False))))
+
+    if include_all_neutrals:
+        exp_neutral =  fitness_data[fitness_data['mutation_type'].isin(['ExpNeutral'])]
+        test_list = sorted(np.unique(test_list + [bc for bc in list(exp_neutral['barcode'].values) if bc not in test_list]))
+        # print(len(exp_neutral['barcode'].values))
+
+    test_list = [bc for bc in test_list if bc not in train_list]
+    # print(len(test_list))
+
+    return train_list, test_list
+
+
+
+
+
+
+
+
+
+
+
+
