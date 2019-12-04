@@ -379,19 +379,29 @@ def var_explained(data,model):
     
     return 1 - ss_res/ss_tot, ss_res, ss_tot
 
+
+def count_matrix(types,data,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
+    
+    counts = np.unique(np.asarray(types),return_counts=True)
+
+    like_type_count_dict = {mut_type:count for mut_type,count in zip(*counts)}
+
+    like_type_counts = [like_type_count_dict[mut_type] if mut_type not in exceptions.keys() else exceptions[mut_type] for mut_type in types]
+    
+    inv_like_type_counts = np.reciprocal(like_type_counts,dtype=np.float)
+
+    if len(data.shape) > 1:
+        like_type_counts = np.repeat(like_type_counts,data.shape[1]).reshape(len(like_type_counts),data.shape[1])
+        inv_like_type_counts = np.repeat(inv_like_type_counts,data.shape[1]).reshape(len(inv_like_type_counts),data.shape[1])
+    
+    return like_type_counts,inv_like_type_counts
+
 def var_explained_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
 
-  counts = np.unique(np.asarray(types),return_counts=True)
+  counts,inv_counts = count_matrix(types,data,exceptions)
 
-  like_type_count_dict = {mut_type:count for mut_type,count in zip(*counts)}
-
-  like_type_counts = [like_type_count_dict[mut_type] if mut_type not in exceptions.keys() else exceptions[mut_type] for mut_type in types]
-
-  if len(data.shape) > 1:
-    like_type_counts = np.repeat(like_type_counts,data.shape[1]).reshape(len(like_type_counts),data.shape[1])
-
-  ss_res = np.sum((data-model)**2/like_type_counts)
-  ss_tot = np.sum((data-np.mean(data))**2/like_type_counts)
+  ss_res = np.sum(((data-model)**2)/counts)
+  ss_tot = np.sum(((data-np.mean(data))**2)/counts)
   
   return 1 - ss_res/ss_tot, ss_res, ss_tot
 
@@ -894,6 +904,170 @@ def SVD_locations(this_data,train_cols,test_cols,training_bcs,testing_bcs,model,
         
     return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs
 
+
+def SVD_predictions_train_test_weighted(data,train,test,
+                                        permuted_mutants=False,permuted_conditions=False,
+                                        mse=False,by_condition=False,by_mutant=False,error=None,likelihood=False,
+                                        weighted_by_type=True,types=None):
+    
+    """ 
+    Bi-cross validation using multiple folds of data matrix. 
+
+    Method from Owen and Perry 2009.
+
+    For each fold, we have the following data matrix:
+
+                        "new conditions"  "old conditions"
+    "new mutants"              A                  B
+    "old mutants"              C                  D
+
+    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
+    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
+
+    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
+
+        A - B * D_k^+ * C 
+
+    """
+
+    train_c = train[0]
+    train_m = train[1]
+
+    test_c = test[0]
+    test_m = test[1]
+
+    this_data = data
+    
+    assert len(train_m) + len(test_m) == this_data.shape[0]
+    assert len(train_c) + len(test_c) == this_data.shape[1]
+
+    max_rank = min([len(train_c),len(train_m)])
+
+    fits_by_condition = []
+    fits_by_mutant = []
+    mean_fits =[]
+
+    if permuted_mutants and permuted_conditions:
+        this_data = copy.copy(data)
+        this_data[train_m,train_c] = np.random.permutation(this_data[train_m,train_c].ravel()).reshape(len(train_m),len(train_c))
+        subset = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].ravel()
+
+    elif permuted_mutants:
+        this_data = copy.copy(data)
+        for mut in train_m:
+            this_data[mut,train_c] = np.random.permutation(this_data[mut,train_c])
+
+    elif permuted_conditions:
+
+        this_data = np.swapaxes(copy.copy(data),0,1)
+        for cond in train_c:
+            this_data[cond,train_m] = np.random.permutation(this_data[cond,train_m])
+        this_data = np.swapaxes(this_data,0,1)
+
+    else:
+        this_data = copy.copy(data)
+        
+    if weighted_by_type:
+        train_count,train_inv_count = count_matrix(types[train_m],this_data[train_m,:])
+        test_count,test_inv_count = count_matrix(types[test_m],this_data[test_m,:])
+        
+        order = np.argsort(np.concatenate((train_m,test_m)))
+        
+        all_count = np.concatenate((train_count,test_count))[order]
+        all_inv_count = np.concatenate((train_inv_count,test_inv_count))[order]
+        
+        weighted_data = np.multiply(all_inv_count,this_data)
+    else:
+        train_count = np.ones(this_data[train_m,:].shape)
+        train_inv_count = np.ones(this_data[train_m,:].shape)
+        test_count = np.ones(this_data[test_m,:].shape)
+        test_inv_count = np.ones(this_data[test_m,:].shape)
+        
+        order = np.argsort(np.concatenate((train_m,test_m)))
+        
+        all_count = np.concatenate((train_count,test_count))[order]
+        all_inv_count = np.concatenate((train_inv_count,test_inv_count))[order]
+        
+        weighted_data = copy.copy(this_data)
+        
+    both_old = weighted_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+    both_old_unweighted = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
+
+    U2, s2, V2 = np.linalg.svd(both_old)
+    
+    mut_new = weighted_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
+    cond_new = weighted_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
+    both_new = weighted_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+    
+    both_new_unweighted = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    if likelihood:
+        both_new_error = error[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
+
+    if mse:
+        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
+    elif likelihood:
+        mean_fits = log_likelihood(mean_mutant_prediction,both_new,both_new_error)
+    else: 
+        mean_fits = tools.var_explained(both_new,mean_mutant_prediction)[0]
+
+    mean_fits_by_condition = []
+
+    if by_condition:
+        for k in range(len(test_c)):
+            if mse:
+                mean_fits_by_condition.append(np.sum(np.square(both_new[:,k]-mean_mutant_prediction[:,k])))
+            elif likelihood:
+                mean_fits_by_condition.append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
+            else:
+                mean_fits_by_condition.append(tools.var_explained(both_new[:,k],mean_mutant_prediction[:,k])[0])
+
+
+    fit_by_rank = []
+    guesses = []
+    dhats = []
+    for rank in range(1,max_rank+1):
+
+        new_s = np.asarray(list(s2[:rank]) + list(np.zeros(s2[rank:].shape)))
+        S2 = np.zeros((U2.shape[0],V2.shape[0]))
+        S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
+
+        D_hat = train_count[:,:len(train_c)]*np.dot(U2[:,:rank],np.dot(S2,V2)[:rank,:])
+        A_hat = test_count[:,:len(test_c)]*np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
+
+        dhats.append(D_hat)
+
+        guesses.append(A_hat)
+        if mse:
+            fit_by_rank.append(np.sum(np.square(both_new_unweighted-A_hat)))
+
+        else:
+            fit_by_rank.append(tools.var_explained(both_new_unweighted,A_hat)[0])
+
+        fits_by_condition.append([])
+        fits_by_mutant.append([])
+
+        if by_condition:
+            for k in range(len(test_c)):
+                if mse:
+                    fits_by_condition[rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
+                elif likelihood:
+                    fits_by_condition[rank-1].append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
+                else:
+                    fits_by_condition[rank-1].append(tools.var_explained(both_new_unweighted[:,k],A_hat[:,k])[0])
+        if by_mutant: 
+            for j in range(len(test_m)):
+                if mse:
+                    fits_by_mutant[rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
+                elif likelihood:
+                    fits_by_mutant[rank-1].append(log_likelihood(mean_mutant_prediction[j,:],both_new[j,:],both_new_error[j,:]))
+                else:
+                    fits_by_mutant[rank-1].append(tools.var_explained(both_new_unweighted[j,:],A_hat[j,:])[0])
+
+        
+    return fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits, mean_fits_by_condition, guesses, dhats, both_old
 
 def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
     
