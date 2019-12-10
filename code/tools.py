@@ -88,7 +88,15 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  'Diploid + Chr12Amp':'#fb9a99',
                  'Diploid + IRA1':'#fb9a99',
                  'Diploid + IRA2':'#fb9a99',
-                 'Diploid_adaptive':'#fb9a99',
+                 'Diploid_adaptive':'#a50f15',
+
+                 # 'Diploid':'#e31a1c',
+                 # 'Diploid + Chr11Amp':'#fb9a99', # light red for adaptive diploids
+                 # 'Diploid + Chr12Amp':'#fb9a99',
+                 # 'Diploid + IRA1':'#fb9a99',
+                 # 'Diploid + IRA2':'#fb9a99',
+                 # 'Diploid_adaptive':'#fb9a99',
+
                  'GPB1':'#b2df8a',  # light green
                  'GPB2':'#33a02c',  # dark green
                  # 'IRA1':'#1f78b4', # dark blue
@@ -396,14 +404,17 @@ def count_matrix(types,data,exceptions={'adaptive_other':1,'Diploid_adaptive':1}
     
     return like_type_counts,inv_like_type_counts
 
-def var_explained_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1}):
+def var_explained_weighted_by_type(data,model,types,exceptions={'adaptive_other':1,'Diploid_adaptive':1},weighted=True):
 
-  counts,inv_counts = count_matrix(types,data,exceptions)
+    if weighted:
+        counts,inv_counts = count_matrix(types,data,exceptions)
 
-  ss_res = np.sum(((data-model)**2)/counts)
-  ss_tot = np.sum(((data-np.mean(data))**2)/counts)
-  
-  return 1 - ss_res/ss_tot, ss_res, ss_tot
+        ss_res = np.sum(((data-model)**2)/counts)
+        ss_tot = np.sum(((data-np.mean(data))**2)/counts)
+
+        return 1 - ss_res/ss_tot, ss_res, ss_tot
+    else:
+        return var_explained(data,model)
 
 
 def sum_squared_error(data,model):
@@ -1765,10 +1776,78 @@ def select_train_test_mutants(fitness_data,max_train=4,max_test=10,exclusion_lis
     return train_list, test_list
 
 
+def fits_by_condition(dataset,this_data,max_model='default',bc_removal=False):
+
+    all_guesses = dataset['CV_all_guesses']
+    both_old = dataset['both_old']
+    dhats = dataset['dhats']
+    test = dataset['test']
+    both_new = dataset['both_new']
+    guesses = dataset['guesses']
+    this_fitness = dataset['this_fitness']
 
 
+    test_conditions  = dataset['test_conditions']
+
+    if max_model == 'default':
+        max_model = dataset['CV_best_rank_index']+1
+
+    train  = copy.copy(dataset['train'])
+    test = copy.copy(dataset['test'])
+
+    training_bcs = copy.copy(dataset['training_bcs'])
+    testing_bcs = copy.copy(dataset['testing_bcs'])
 
 
+    if bc_removal != False:
+        train_where = np.where(np.isin(training_bcs,bc_removal))[0]
+        test_where = np.where(np.isin(testing_bcs,bc_removal))[0]
+        
+        train[1] = [x for i,x in enumerate(train[1]) if i not in train_where]
+        test[1] = [x for i,x in enumerate(test[1]) if i not in test_where]
+        
+        training_bcs = [x for i,x in enumerate(training_bcs) if i not in test_where]
+        testing_bcs = [x for i,x in enumerate(testing_bcs) if i not in test_where]
+
+
+    nonsubtle_fits = []
+    subtle_fits = []
+    overall_subtle = []
+    overall_nonsubtle = []
+    for model in range(max_model):
+
+        types = this_data[this_data['barcode'].isin(testing_bcs)]['mutation_type'].values
+        
+        new_mut_locs = dataset['mut_locs'][model][test[1]]
+        
+        old_cond_locs = dataset['cond_locs'][model][train[0]]
+
+        new_cond_locs = dataset['cond_locs'][model][test[0]]
+        
+        these_sigmas = dataset['dimension_weights'][model]
+        these_sigmas = these_sigmas[:model+1,:model+1]
+
+        
+
+
+        overall_nonsubtle.append(var_explained_weighted_by_type(this_fitness[test[1],:][:,test[0]],
+                                                                      np.dot(new_mut_locs,np.dot(these_sigmas,new_cond_locs.T)),types)[0])
+
+        this_sse = np.asarray([var_explained_weighted_by_type(this_fitness[test[1],test[0][i]],
+                                                                      np.dot(new_mut_locs,np.dot(these_sigmas,new_cond_locs.T))[:,i],types)[0] for i in range(new_cond_locs.shape[0])])
+        nonsubtle_fits.append(this_sse)
+        
+        overall_subtle.append(var_explained_weighted_by_type(this_fitness[test[1],:][:,train[0]],
+                                                                      np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T)),types)[0])
+
+
+        subtle_sse = np.asarray([var_explained_weighted_by_type(this_fitness[test[1],train[0][i]],
+                                                                      np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i],types)[0] for i in range(old_cond_locs.shape[0])])
+
+        subtle_fits.append(subtle_sse)
+
+    return overall_subtle, subtle_fits, overall_nonsubtle, nonsubtle_fits
+        
 
 
 
