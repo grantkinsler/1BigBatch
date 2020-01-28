@@ -24,15 +24,25 @@ renamed_conditions = {
                   # 'M3_Batch_21':'M3 Batch 6',
                   # 'M3_Batch_23':'M3 Batch 7',
                   # '1BB_M3':'M3 Batch 8',
-                   '19':'M3',
-                  'M3_Batch_3':'M3',
-                  'M3_Batch_6':'M3',
-                  'M3_Batch_13':'M3',
-                  'M3_Batch_18':'M3',
-                  'M3_Batch_20':'M3',
-                  'M3_Batch_21':'M3',
-                  'M3_Batch_23':'M3',
-                  '1BB_M3':'M3',
+                  #  '19':'M3',
+                  # 'M3_Batch_3':'M3',
+                  # 'M3_Batch_6':'M3',
+                  # 'M3_Batch_13':'M3',
+                  # 'M3_Batch_18':'M3',
+                  # 'M3_Batch_20':'M3',
+                  # 'M3_Batch_21':'M3',
+                  # 'M3_Batch_23':'M3',
+                  # '1BB_M3':'M3',
+
+                   '19':'EC',
+                  'M3_Batch_3':'EC',
+                  'M3_Batch_6':'EC',
+                  'M3_Batch_13':'EC',
+                  'M3_Batch_18':'EC',
+                  'M3_Batch_20':'EC',
+                  'M3_Batch_21':'EC',
+                  'M3_Batch_23':'EC',
+                  '1BB_M3':'EC',
 
 
                   # '1BB_Baffle':'Baffle(8)',
@@ -110,7 +120,7 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  'PDE2':'#ff7f00',  # dark orange
                  'RAS2':'#b15928', # brown
                  'TFS1':'#fdbf6f', # light orange
-                 
+                 'SSK2':'gray',
                  'SCH9':'#6a3d9a', # dark purple for TOR mutants
                  'TOR1':'#6a3d9a',
                  'KOG1':'#6a3d9a', 

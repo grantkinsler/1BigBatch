@@ -14,6 +14,63 @@ from tools import tick_base_calculator
 sns.set_color_codes()
 
 
+
+def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color):
+    
+    running_subtle = np.zeros(len(ve_improvements[0,:]))
+    for c,col in enumerate(train_conditions):
+        ax.scatter([tools.jitter_point(i-0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+                    s=50,color='lightgray',marker='.',alpha=0.9)
+        running_subtle += ve_improvements[c,:]
+        
+    ax.scatter([i-0.2 for i in range(len(ve_improvements[0,cutoff:]))],np.mean(ve_improvements[range(len(train_conditions)),cutoff:],axis=0),color='k',alpha=0.75,marker='_')
+
+    for c,col in enumerate(test_conditions):
+        c=len(train_conditions)+c
+        if col in focal_conditions.keys():
+            colors = [matplotlib.colors.to_hex('k') for i in range(len(ve_improvements[c,:]))]
+            colors[focal_conditions[col][0]-2] = focal_conditions[col][1]
+            colors = colors[cutoff:]
+            
+            sizes = [50 for i in range(len(ve_improvements[c,:]))]
+            sizes[focal_conditions[col][0]-2] = 50
+            sizes = sizes[cutoff:]
+            
+            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+                    s=sizes,color=colors,marker='.',alpha=1.0)
+        
+        elif col not in contrast_condition.keys():
+            sizes = [50 for i in range(len(ve_improvements[c,:]))]
+            sizes = sizes[cutoff:]
+            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+                    s=sizes,color='k',marker='.',alpha=0.8,label=renamed_conditions[col.replace('_fitness','')])
+
+    for c,col in enumerate(test_conditions):
+        if col in contrast_condition.keys():
+            colors = [matplotlib.colors.to_hex('k') for i in range(len(ve_improvements[c,:]))]
+            for entry in contrast_condition[col]:
+                colors[entry-2] = contrast_color
+            colors = colors[cutoff:]
+            
+            sizes = [50 for i in range(len(ve_improvements[c,:]))]
+            for entry in contrast_condition[col]:
+                sizes[entry-2] = 50
+            sizes = sizes[cutoff:]
+            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+                    s=sizes,color=colors,marker='.',alpha=1.0) 
+
+
+    end = len(ve_improvements[0,:])+1
+    ax.axhline(0,linestyle=':',color='k')
+    plt.xticks(range(end-1-cutoff),range(2+cutoff,end+1))
+    # plt.xticks(full_model[:-1],range(2,len(full_model)+1))
+    plt.ylabel(r'Improvement due to component ($\Delta \widetilde R^2$)')
+    # plt.ylabel(r'Improvement due to component ($\Delta R^2$)')
+    plt.xlabel('Component')
+
+    return ax
+
+
 def fitness_featured_genes_figure(ax,this_data,minimal_training_bcs,minimal_testing_bcs,m3_conditions,nonm3_conditions,gene_list,
     ymin=-1.25,ymax=1.5,yticknum=12,median=True,legend=True,legend_cols=1,color_alpha=0.1,gray_alpha=0.1,fontsize=12,style='default'):
 
@@ -127,7 +184,7 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
 
     plt.ylim(ymin,ymax)
 
-    plt.axvline(x=len(m3_conditions)+0.5,color='gray')
+    plt.axvline(x=len(m3_conditions)+0.5,color='gray',lw=1.0)
 
     plt.axhline(y=0.0,color='k',linestyle=':',alpha=0.2)
 
@@ -238,7 +295,7 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
 
 
 def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3_conditions,gene_list,
-    ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=12,style='default',side_bars=True,faded_alpha=0.3,vline=True,tubes=True,eye_guides=True):
+    ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=11,style='default',side_bars=True,faded_alpha=0.3,vline=True,tubes=True,eye_guides=True):
 
     if style == 'dark':
         plt.style.use('dark_background')
@@ -255,11 +312,17 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
 
     mutant_data = this_data[this_data['barcode'].isin(bc_list)]
 
+    # offset = {'IRA1_nonsense':0,
+    #           'IRA1_missense':0.1/3,
+    #           'Diploid':0,
+    #           'GPB2':0.2/3,
+    #           'PDE2':0.3/3,}
+
     offset = {'IRA1_nonsense':0,
-              'IRA1_missense':0.1/3,
-              'Diploid':0,
-              'GPB2':0.2/3,
-              'PDE2':0.3/3,}
+          # 'IRA1_missense':0.1/3,
+          'Diploid':0,
+          'GPB2':0.1/3,
+          'PDE2':0.2/3,}
               
     this_gene_data = mutant_data[mutant_data['mutation_type'].isin(gene_list)]
 
@@ -271,7 +334,8 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
     plt.ylim(ymin,ymax)
 
     if vline:
-        plt.axvline(x=len(m3_conditions)+0.5,color='gray')
+        plt.axvline(x=len(m3_conditions)+0.5,color='gray',lw=1.0)
+        # plt.axvline(x=len(m3_conditions)+0.5,color='gray',lw=1.0)
 
     plt.axhline(y=0.0,color='k',linestyle=':',alpha=0.2)
 
@@ -297,12 +361,12 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
             diff = twosigma_top - twosigma_bottom
             
             
-            plt.axhline(twosigma_top,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
-            plt.axhline(twosigma_bottom,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
+            # plt.axhline(twosigma_top,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
+            # plt.axhline(twosigma_bottom,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
             rect = matplotlib.patches.Rectangle((0,twosigma_bottom),len(all_conditions)+2,twosigma_top-twosigma_bottom,
                                                 linewidth=1,edgecolor=mutant_colorset[gene],facecolor=mutant_colorset[gene],alpha=0.02)
             
-            ax.add_patch(rect)
+            # ax.add_patch(rect)
             
             diff_transform = ax.transData.transform((0.5, diff))
 
@@ -384,6 +448,20 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
     plt.ylabel('Relative Fitness')
     plt.xlabel('Condition')
 
+
+    arrow_left = ax.transData.transform_point((1, 0))
+    arrow_right = ax.transData.transform_point((len(m3_conditions), 0))
+
+    arrow_width = (arrow_right[0]-arrow_left[0])/2
+    print(arrow_left,arrow_right,arrow_width)
+
+    trans_arrow = matplotlib.transforms.blended_transform_factory(ax.transData, ax.transData)
+
+    plt.annotate('Batches\nof the\nEvolution\nCondition', xy=(len(m3_conditions)/2+0.5, -1.55), xytext=(len(m3_conditions)/2+0.5, -1.65), 
+        fontsize=10,ha='center', va='top',xycoords=trans_arrow,annotation_clip=False,
+        arrowprops=dict(arrowstyle=f'-[, widthB={arrow_width}, lengthB=7.0', lw=1.0,mutation_scale=1.0))
+    
+
     return ax
         
 
@@ -432,14 +510,155 @@ def zscore_graph(ax,m3_z_scores,nonm3_z_scores,sorted_m3_cols,sorted_nonm3_cols,
     # plt.ylabel('Average Z Score for\nBalanced Collection')
     plt.ylabel('Average Z Score')
     plt.xlabel('Condition')
-    plt.axvline(x=len(sorted_m3_cols)-0.5,color='gray')
+    plt.axvline(x=len(sorted_m3_cols)-0.5,color='gray',lw=1.0)
+    plt.axvline(x=len(below)-0.5,color='r',lw=1.0)
     # plt.yscale('log')
 
     # plt.tight_layout()
     plt.ylim(ymin,ymax)
     plt.yticks(range(ymin,ymax+1,ytick_interval),range(ymin,ymax+1,ytick_interval))
 
+    # plt.text(s='Batches',x=len(sorted_m3_cols)/2-0.5, y=np.mean([ymin,ymax]),
+    #     fontsize=12,fontweight='semibold',color='k',ha='center',va='center')
+
+    plt.text(s='Subtle',x=len(below)/2-0.5, y=np.mean([ymin,ymax]),
+        fontsize=12,fontweight='semibold',color='k',ha='center',va='center')
+
+    plt.text(s='Strong',x=len(below)+len(above)/2-0.5, y=np.mean([ymin,ymax]),
+        fontsize=12,fontweight='semibold',color='r',ha='center',va='center')
+
+    plt.text(s=r'2$\sigma$',x=len(all_z_scores)+0.5,y=2.0,
+        fontsize=12,color=below_color,alpha=0.4,ha='center',va='center')
+
     return ax
+
+
+def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,n_perms=100,ymin=-0.5,ymax=1.0,
+    guide_color='lightgray',weighted=True,style='default',permute=True,build_up=False):
+
+
+    if style == 'dark':
+        model_color = 'w'
+
+    elif style == 'default':
+        model_color = 'k'
+
+    top_ax = fig.add_subplot(gs[0])
+
+    plt.axhline(0,color='gray',linestyle=':')
+
+    perms = np.zeros(both_new.shape[1])
+
+    # this_gene_data = this_data[this_data['barcode'].isin(test_mutant_data)]
+    types = this_data[this_data['barcode'].isin(dataset['testing_bcs'])]['mutation_type'].values
+
+    ## eye guides
+    for i in range(int(np.ceil(len(test_conditions)/4))):
+        if (i % 2) == 0:
+            # print(i)
+            rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
+                                            linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+        
+            top_ax.add_patch(rect)
+
+    # n_perms = 1000
+    if permute:
+        for i in range(n_perms):
+            perm_out = tools.SVD_predictions_train_test(this_fitness,train,test,by_condition=True,permuted_conditions=True)
+            # perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][model][:,i])[0] for i in range(both_new.shape[1])])
+            if weighted:
+                perm = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],perm_out[5][models[-1]][:,i],types)[0] for i in range(both_new.shape[1])])
+            else:
+                perm = np.asarray([tools.var_explained(both_new[:,i],perm_out[5][models[-1]][:,i])[0] for i in range(both_new.shape[1])])
+
+            perms = perms + perm
+            plt.plot(perm,'.',color='gray',alpha=0.01)
+        plt.plot((perms/n_perms),'_',color=model_color,alpha=0.8,label='Permutation Average')
+
+    for model in models:
+        print(model+1,tools.var_explained_weighted_by_type(both_new,guesses[model],types)[0])
+
+    # oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
+    if weighted:
+        oneD = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[0][:,i],types)[0] for i in range(both_new.shape[1])])
+    else:
+        oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
+
+    plt.plot(oneD,'o',markeredgecolor=model_color,markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
+
+    if weighted:
+        plt.ylabel(r'Weighted Coefficient of Determination ($\widetilde R^2$)')
+    else:
+        plt.ylabel(r'Coefficient of Determination ($R^2$)')
+    plt.xlabel('Condition')
+
+
+    plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
+    
+    plt.xlim(-0.5,len(test_conditions)-0.5)
+    plt.ylim(ymin,ymax)
+
+
+    if build_up != False:
+        plt.savefig(f'{build_up}_0.pdf',bbox_inches='tight')
+
+    models = models[::-1]
+    # print(models)
+    for model in models:
+    
+        if weighted:
+            this_sse = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[model][:,i],types)[0] for i in range(both_new.shape[1])])
+        else:
+            this_sse = np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])])
+
+        if model == models[0]:
+            plt.plot(this_sse,'o',label=f'{model+1} component model',color='r',alpha=0.8)
+        else:
+            plt.plot(this_sse,'.',label=f'{model+1} component model',color=model_color,alpha=0.8)
+
+        if build_up != False:
+            plt.savefig(f'{build_up}_{model}.pdf',bbox_inches='tight')
+
+    plt.legend(loc='lower left')
+
+
+    bottom_ax = fig.add_subplot(gs[1])
+
+    # plt.ylim(0.5,1.25)
+
+
+    plt.ylabel(f'Percent of {models[0]+1} model explained by {models[1]+1} model' )
+    plt.xlabel('Condition')
+
+    plt.axhline(1.0,color='gray',linestyle=':')
+
+
+    plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
+    
+    plt.xlim(-0.5,len(test_conditions)-0.5)
+    model1 = models[0]
+
+    model2 = models[1]
+
+    if weighted:
+        these_sse = [np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[model][:,i],types)[0] for i in range(both_new.shape[1])]) for model in models]
+    else:
+        these_sse = [np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])]) for model in models]
+
+    print(these_sse[1]/these_sse[0])
+    plt.plot(these_sse[1]/these_sse[0],'^',label=f'{model+1} component model',color='b',alpha=0.8)
+
+    cymin,ymax = plt.ylim()
+
+    for i in range(int(np.ceil(len(test_conditions)/4))):
+        if (i % 2) == 0:
+            # print(i)
+            rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
+                                            linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+        
+            bottom_ax.add_patch(rect)
+
+    return gs
 
 def largescale_predictions_graph(ax,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,n_perms=100,ymin=-0.5,ymax=1.0,
     guide_color='lightgray',weighted=True,style='default',permute=True,build_up=False):
@@ -672,7 +891,7 @@ def Figure4(dataset,gene_list):
 
 
     # ax2 = fig.add_subplot(outer_gs[0,1])
-    plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
+    # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
     inner_gs = gridspec.GridSpecFromSubplotSpec(2, 2,subplot_spec = outer_gs[0,1], width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
 
     # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
@@ -694,7 +913,7 @@ def Figure4(dataset,gene_list):
     # plt.legend()
 
     ax3 = fig.add_subplot(outer_gs[1,0])
-    plt.text(s='C',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
+    # plt.text(s='C',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
 
     largescale_predictions_graph(ax3,this_fitness,train,test,both_new,guesses,model,test_conditions)
 
@@ -799,12 +1018,12 @@ def prediction_examples(fig,gs,dataset,this_data,example_conditions,models,legen
         bigmin = min(ax_mins)
         bigmax = max(ax_maxs)
 
-        bigmin = 0
-        bigmax = 1.0
+        # bigmin = 0
+        # bigmax = 1.0
 
         for a,ax in enumerate(axes):
             plt.sca(ax)
-            plt.plot([bigmin,bigmax],[bigmin,bigmax],color='w',linestyle='--')
+            plt.plot([bigmin,bigmax],[bigmin,bigmax],color='k',linestyle='--')
             # plt.tight_layout()
             plt.xlim(bigmin,bigmax)
             plt.ylim(bigmin,bigmax)
@@ -885,18 +1104,36 @@ def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='de
     outer_gs = gridspec.GridSpec(2, 2, width_ratios=[6, 2*len(example_conditions)], height_ratios=[4, 4])
     # gs = GridSpec(3, 3, width_ratios=[5, 4, 1], height_ratios=[5, 1, 4])
 
-    ax1 = fig.add_subplot(outer_gs[0,0])
-    if labels:
-        plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
+    
 
-    largescale_predictions_graph(ax1,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,
-                                weighted=weighted,style=style,permute=permute,build_up=build_up)
+    left_gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outer_gs[0,0],hspace=0.1,wspace=0.25)
+    
+    # ax1 = fig.add_subplot(left_gs[0])
+
+    # if labels:
+    #     plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
+
+
+    # largescale_predictions_graph(ax1,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,
+    #                             weighted=weighted,style=style,permute=permute,build_up=build_up)
+
+
+    largescale_predictions_with_improvement(fig,left_gs,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,
+                                            weighted=weighted,style=style,permute=permute,build_up=build_up)
+
+    # ax2 = fig.add_subplot(left_gs[1])
+
+
 
 
 
     # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
-    inner_gs = gridspec.GridSpecFromSubplotSpec(1+len(models),len(example_conditions),subplot_spec = outer_gs[0,1],hspace=0.1,wspace=0.2)
-    prediction_examples(fig,inner_gs,dataset,this_data,example_conditions,models,weighted=weighted)
+    inner_gs = gridspec.GridSpecFromSubplotSpec(1+len(models),len(example_conditions),subplot_spec = outer_gs[0,1],hspace=0.1,wspace=0.25)
+    prediction_examples(fig,inner_gs,dataset,this_data,example_conditions,models,weighted=weighted,label=False)
+
+    # ax2 = fig.add_subplot(outer_gs[0,1])
+    # if labels:
+    #     plt.text(s='C',x=1.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
 
 
 
