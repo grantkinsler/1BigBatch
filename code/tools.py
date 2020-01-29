@@ -1783,7 +1783,59 @@ def fits_by_condition(dataset,this_data,max_model='default',bc_removal=False):
     return overall_subtle, subtle_fits, overall_nonsubtle, nonsubtle_fits
         
 
+def improvements_component_by_condition(dataset,this_data,full_model=range(9)):
 
+    this_fitness = dataset['this_fitness']
+    this_error = dataset['this_error']
+    train = dataset['train']
+    test = dataset['test']
+
+    train_conditions = dataset['train_conditions']
+    test_conditions = dataset['test_conditions']
+
+    all_conditions = train_conditions + test_conditions
+
+    all_bcs = sorted(list(dataset['training_bcs'])+list(dataset['testing_bcs']))
+
+    testing_bcs = list(dataset['testing_bcs'])
+
+    these_bcs = testing_bcs
+    these_genes = this_data[this_data['barcode'].isin(these_bcs)]['mutation_type'].values
+
+    ves = []
+
+    for c,condition in enumerate(all_conditions):
+
+            condition_loc = np.where(np.isin(all_conditions,condition))[0][0]
+
+            this_f = this_fitness[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+            this_e = this_error[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+            
+            ves.append([])
+            
+            for this_m in range(1,len(full_model)+1):
+                
+                this_model = list(range(this_m))
+
+                ve, old_mut_locs, new_mut_locs, old_cond_locs, new_cond_locs, these_sigmas = SVD_mixnmatch_locations(this_fitness,train,test,this_model)
+        
+                these_sigmas = these_sigmas[:len(this_model),:len(this_model)]
+                
+                if condition in test_conditions:
+                    this_estimates = [np.dot(new_mut_locs,np.dot(these_sigmas,new_cond_locs.T))[bc,condition_loc-old_cond_locs.shape[0]] for bc in range(len(these_bcs))]
+                else:
+                    this_estimates = [np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[bc,condition_loc] for bc in range(len(these_bcs))]    
+            
+                this_ve = var_explained(this_f,this_estimates)
+                this_ve = var_explained_weighted_by_type(this_f,this_estimates,these_genes)
+                
+                ves[c].append(this_ve[0])
+    
+    ve_improvements_adding = []      
+    for c,condition in enumerate(all_conditions):
+        ve_improvements_adding.append(np.diff(ves[c]))
+
+    return np.asarray(ve_improvements_adding)
 
 
 

@@ -5,21 +5,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib import gridspec
+from matplotlib.gridspec import GridSpec
 from itertools import combinations
 from scipy.spatial import distance
 from tools import mutant_colorset
 from tools import condition_colorset
 from tools import renamed_conditions
 from tools import tick_base_calculator
+from matplotlib.patches import ConnectionPatch
+import copy
 sns.set_color_codes()
 
 
 
-def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color):
+def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color,jitters=[tools.jitter_point(0,0.5) for i in range(500)]):
     
     running_subtle = np.zeros(len(ve_improvements[0,:]))
     for c,col in enumerate(train_conditions):
-        ax.scatter([tools.jitter_point(i-0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+        ax.scatter([-0.2+i+jitters[len(train_conditions)*c+i] for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
                     s=50,color='lightgray',marker='.',alpha=0.9)
         running_subtle += ve_improvements[c,:]
         
@@ -36,13 +39,13 @@ def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions
             sizes[focal_conditions[col][0]-2] = 50
             sizes = sizes[cutoff:]
             
-            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+            ax.scatter([0.2+i+jitters[len(test_conditions)*c+i] for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
                     s=sizes,color=colors,marker='.',alpha=1.0)
         
         elif col not in contrast_condition.keys():
             sizes = [50 for i in range(len(ve_improvements[c,:]))]
             sizes = sizes[cutoff:]
-            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+            ax.scatter([0.2+i+jitters[len(test_conditions)*c+i] for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
                     s=sizes,color='k',marker='.',alpha=0.8,label=renamed_conditions[col.replace('_fitness','')])
 
     for c,col in enumerate(test_conditions):
@@ -56,7 +59,7 @@ def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions
             for entry in contrast_condition[col]:
                 sizes[entry-2] = 50
             sizes = sizes[cutoff:]
-            ax.scatter([tools.jitter_point(i+0.2,0.05) for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
+            ax.scatter([0.2+i+jitters[len(test_conditions)*c+i]  for i in range(len(ve_improvements[c,cutoff:]))],ve_improvements[c,cutoff:],
                     s=sizes,color=colors,marker='.',alpha=1.0) 
 
 
@@ -533,8 +536,8 @@ def zscore_graph(ax,m3_z_scores,nonm3_z_scores,sorted_m3_cols,sorted_nonm3_cols,
     return ax
 
 
-def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,n_perms=100,ymin=-0.5,ymax=1.0,
-    guide_color='lightgray',weighted=True,style='default',permute=True,build_up=False):
+def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_new,guesses,models,train_conditions,test_conditions,dataset,this_data,n_perms=100,ymin=-0.5,ymax=1.0,
+    guide_color='lightgray',guide_alpha=0.2,weighted=True,style='default',permute=True,build_up=False,include_subtle=True):
 
 
     if style == 'dark':
@@ -543,7 +546,7 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
     elif style == 'default':
         model_color = 'k'
 
-    top_ax = fig.add_subplot(gs[0])
+    top_ax = fig.add_subplot(gs[1])
 
     plt.axhline(0,color='gray',linestyle=':')
 
@@ -553,11 +556,12 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
     types = this_data[this_data['barcode'].isin(dataset['testing_bcs'])]['mutation_type'].values
 
     ## eye guides
-    for i in range(int(np.ceil(len(test_conditions)/4))):
+
+    for i in range(int(np.ceil((len(train_conditions)+len(test_conditions))/3))):
         if (i % 2) == 0:
             # print(i)
-            rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
-                                            linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+            rect = matplotlib.patches.Rectangle((8+1+3*i-0.5,ymin),3,ymax-ymin,
+                                            linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
         
             top_ax.add_patch(rect)
 
@@ -575,16 +579,6 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
             plt.plot(perm,'.',color='gray',alpha=0.01)
         plt.plot((perms/n_perms),'_',color=model_color,alpha=0.8,label='Permutation Average')
 
-    for model in models:
-        print(model+1,tools.var_explained_weighted_by_type(both_new,guesses[model],types)[0])
-
-    # oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
-    if weighted:
-        oneD = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[0][:,i],types)[0] for i in range(both_new.shape[1])])
-    else:
-        oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
-
-    plt.plot(oneD,'o',markeredgecolor=model_color,markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
 
     if weighted:
         plt.ylabel(r'Weighted Coefficient of Determination ($\widetilde R^2$)')
@@ -592,12 +586,41 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
         plt.ylabel(r'Coefficient of Determination ($R^2$)')
     plt.xlabel('Condition')
 
+    if include_subtle:
+        plt.xticks(range(len(test_conditions)+len(train_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in train_conditions + test_conditions],rotation=90)
+        plt.xlim(-0.5,len(train_conditions)+len(test_conditions)-0.5)
+    else:
+        plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
+        plt.xlim(-0.5,len(test_conditions)-0.5)
 
-    plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
-    
-    plt.xlim(-0.5,len(test_conditions)-0.5)
     plt.ylim(ymin,ymax)
 
+    if weighted:
+        oneD = np.asarray([tools.var_explained_weighted_by_type(both_new[:,i],guesses[0][:,i],types)[0] for i in range(both_new.shape[1])])
+    else:
+        oneD = np.asarray([tools.var_explained(both_new[:,i],guesses[0][:,i])[0] for i in range(both_new.shape[1])])
+
+    if include_subtle:
+        new_mut_locs = dataset['mut_locs'][0][test[1]]
+        old_cond_locs = dataset['cond_locs'][0][train[0]]
+        these_sigmas = dataset['dimension_weights'][0]
+        these_sigmas = these_sigmas[:1,:1]
+
+        if weighted:
+            subtle_one = np.asarray([tools.var_explained_weighted_by_type(this_fitness[test[1],train[0][i]],
+                                    np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i],types)[0] for i in range(old_cond_locs.shape[0])])
+        else:
+            subtle_one = np.asarray([tools.var_explained(this_fitness[test[1],train[0][i]],
+                                    np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i])[0] for i in range(old_cond_locs.shape[0])])
+
+        oneD = np.concatenate((subtle_one,oneD))
+        # print(len(this_sse))
+        
+
+
+    plt.plot(oneD,'o',markeredgecolor=model_color,markerfacecolor='None',linestyle='',alpha=0.8,label='1 component model')
+
+    
 
     if build_up != False:
         plt.savefig(f'{build_up}_0.pdf',bbox_inches='tight')
@@ -611,6 +634,23 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
         else:
             this_sse = np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])])
 
+        if include_subtle:
+            new_mut_locs = dataset['mut_locs'][model][test[1]]
+            old_cond_locs = dataset['cond_locs'][model][train[0]]
+            these_sigmas = dataset['dimension_weights'][model]
+            these_sigmas = these_sigmas[:model+1,:model+1]
+
+            plt.axvline(len(train_conditions)-0.5,color='k',lw=0.5,alpha=0.8)
+
+            if weighted:
+                subtle_sse = np.asarray([tools.var_explained_weighted_by_type(this_fitness[test[1],train[0][i]],
+                                        np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i],types)[0] for i in range(old_cond_locs.shape[0])])
+            else:
+                subtle_sse = np.asarray([tools.var_explained(this_fitness[test[1],train[0][i]],
+                                        np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i])[0] for i in range(old_cond_locs.shape[0])])
+
+            this_sse = np.concatenate((subtle_sse,this_sse))
+
         if model == models[0]:
             plt.plot(this_sse,'o',label=f'{model+1} component model',color='r',alpha=0.8)
         else:
@@ -622,22 +662,26 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
     plt.legend(loc='lower left')
 
 
-    bottom_ax = fig.add_subplot(gs[1])
+    bottom_ax = fig.add_subplot(gs[0])
 
     # plt.ylim(0.5,1.25)
 
 
-    plt.ylabel(f'Percent of {models[0]+1} model explained by {models[1]+1} model' )
-    plt.xlabel('Condition')
+    plt.ylabel(f'Percent of {models[0]+1} model\nexplained by {models[1]+1} model' )
+    # plt.xlabel('Condition')
 
     plt.axhline(1.0,color='gray',linestyle=':')
 
 
-    plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
+    # plt.xticks(range(len(test_conditions)),[renamed_conditions[col.replace('_fitness','')] for col in test_conditions],rotation=90)
+    if include_subtle:
+        plt.xticks(range(len(test_conditions)+len(train_conditions)),['' for col in train_conditions + test_conditions],rotation=90)
+        plt.xlim(-0.5,len(train_conditions)+len(test_conditions)-0.5)
+    else:
+        plt.xticks(range(len(test_conditions)),['' for col in test_conditions],rotation=90)
+        plt.xlim(-0.5,len(test_conditions)-0.5)
     
-    plt.xlim(-0.5,len(test_conditions)-0.5)
     model1 = models[0]
-
     model2 = models[1]
 
     if weighted:
@@ -645,16 +689,48 @@ def largescale_predictions_with_improvement(fig,gs,this_fitness,train,test,both_
     else:
         these_sse = [np.asarray([tools.var_explained(both_new[:,i],guesses[model][:,i])[0] for i in range(both_new.shape[1])]) for model in models]
 
-    print(these_sse[1]/these_sse[0])
-    plt.plot(these_sse[1]/these_sse[0],'^',label=f'{model+1} component model',color='b',alpha=0.8)
+
+    if include_subtle:
+
+
+        plt.axvline(len(train_conditions)-0.5,color='k',lw=0.5,alpha=0.8)
+
+        subtle_these_sse = []
+
+        for model in models:
+            new_mut_locs = dataset['mut_locs'][model][test[1]]
+            old_cond_locs = dataset['cond_locs'][model][train[0]]
+            these_sigmas = dataset['dimension_weights'][model]
+            these_sigmas = these_sigmas[:model+1,:model+1]
+
+            if weighted:
+                subtle_these_sse.append(np.asarray([tools.var_explained_weighted_by_type(this_fitness[test[1],train[0][i]],
+                                        np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i],types)[0] for i in range(old_cond_locs.shape[0])]))
+            else:
+                subtle_these_sse.append(np.asarray([tools.var_explained(this_fitness[test[1],train[0][i]],
+                                        np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[:,i])[0] for i in range(old_cond_locs.shape[0])]))
+
+        # print(subtle_these_sse.shape)
+        these_sse = np.concatenate((np.asarray(subtle_these_sse),np.asarray(these_sse)),axis=1)
+
+    # print(these_sse[1]/these_sse[0])
+    plt.plot(these_sse[1]/these_sse[0],'o',label=f'{model+1} component model',color='k',alpha=0.8)
 
     cymin,ymax = plt.ylim()
 
-    for i in range(int(np.ceil(len(test_conditions)/4))):
+    # for i in range(int(np.ceil(len(test_conditions)/4))):
+    #     if (i % 2) == 0:
+    #         # print(i)
+    #         rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
+    #                                         linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+        
+    #         bottom_ax.add_patch(rect))
+
+    for i in range(int(np.ceil((len(train_conditions)+len(test_conditions))/3))):
         if (i % 2) == 0:
             # print(i)
-            rect = matplotlib.patches.Rectangle((4*i-0.5,ymin),4,ymax-ymin,
-                                            linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+            rect = matplotlib.patches.Rectangle((8+1+3*i-0.5,ymin),3,ymax-ymin,
+                                            linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
         
             bottom_ax.add_patch(rect)
 
@@ -1085,7 +1161,7 @@ def all_example_predictions(dataset,gene_list,this_data,example_conditions,model
     return fig
 
 
-def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='default',weighted=True,style='default',permute=True,build_up=False,labels=False):
+def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='default',weighted=True,style='default',permute=True,build_up=False,labels=False,subtle=True):
     all_guesses = dataset['CV_all_guesses']
     both_old = dataset['both_old']
     dhats = dataset['dhats']
@@ -1095,6 +1171,7 @@ def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='de
     both_new = dataset['both_new']
     guesses = dataset['guesses']
     test_conditions  = dataset['test_conditions']
+    train_conditions = dataset['train_conditions']
     if models == 'default':
         models = [dataset['CV_best_rank_index']]
 
@@ -1106,7 +1183,7 @@ def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='de
 
     
 
-    left_gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outer_gs[0,0],hspace=0.1,wspace=0.25)
+    left_gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outer_gs[0,0],height_ratios=[1,3],hspace=0.05,wspace=0.25)
     
     # ax1 = fig.add_subplot(left_gs[0])
 
@@ -1118,8 +1195,8 @@ def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='de
     #                             weighted=weighted,style=style,permute=permute,build_up=build_up)
 
 
-    largescale_predictions_with_improvement(fig,left_gs,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,
-                                            weighted=weighted,style=style,permute=permute,build_up=build_up)
+    largescale_predictions_with_improvement(fig,left_gs,this_fitness,train,test,both_new,guesses,models,train_conditions,test_conditions,dataset,this_data,
+                                            weighted=weighted,style=style,permute=permute,build_up=build_up,include_subtle=subtle)
 
     # ax2 = fig.add_subplot(left_gs[1])
 
@@ -1140,39 +1217,210 @@ def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='de
     return fig
 
 
-def Figure5(dataset,gene_list,model='default'):
+# def Figure5_improvement_portion(ve_impr):
 
-    all_guesses = dataset['CV_all_guesses']
-    both_old = dataset['both_old']
-    dhats = dataset['dhats']
-    this_fitness  = dataset['this_fitness']
-    train  = dataset['train']
-    test = dataset['test']
-    both_new = dataset['both_new']
-    guesses = dataset['guesses']
-    test_conditions  = dataset['test_conditions']
-    if model == 'default':
-        model = dataset['CV_best_rank_index']
-        x_d = 0
-        y_d = model
-    else:
-        x_d = model[0]
-        y_d = model[1]
+def Figure5(dataset_overall,dataset_examples,this_data,models,focal_conditions,contrast_condition,replacement_names = {60700:'SSK2'},uniques='Default',contrast_color='k'):
+        #         unique_genes = [['Diploid + Chr11Amp','Diploid + Chr12Amp'],
+    #                         ['KOG1','TFS1','RAS2','SCH9','TOR1','SSK2'],
+    #                         ['GPB2'],['IRA1_nonsense'],['Diploid'],['IRA1_missense'],['PDE2'],['Diploid_adaptive']]
+    #         unique_names = ['Diploid + Chr. Amp','Unique\nAdaptive Haploids','GPB2','IRA1 nonsense','Diploid','IRA1 missense','PDE2','Adaptive Diploids']
+            
+
+    highlight_colors =  ["#e41a1c","#377eb8","#4daf4a","#984ea3"]
+
+    all_jitters = [tools.jitter_point(0) for i in range(1000)]
+
+    n_perms = 100
+    weighted= True
+    ymax = 1.0
+    ymin = -1.0
+
+    all_guesses = dataset_examples['CV_all_guesses']
+    both_old = dataset_examples['both_old']
+    dhats = dataset_examples['dhats']
+    this_fitness = dataset_examples['this_fitness']
+    this_error = dataset_examples['this_error']
+    train  = dataset_examples['train']
+    test = dataset_examples['test']
+    both_new = dataset_examples['both_new']
+    guesses = dataset_examples['guesses']
+    model = dataset_examples['CV_best_rank_index']
+    test_conditions  = dataset_examples['test_conditions']
+    train_conditions = dataset_examples['train_conditions']
+
+    all_conditions = train_conditions + test_conditions
+
+    all_bcs = sorted(list(dataset_examples['training_bcs'])+list(dataset_examples['testing_bcs']))
+    testing_bcs = list(dataset_examples['testing_bcs'])
+    these_bcs = testing_bcs
+    these_genes = this_data[this_data['barcode'].isin(these_bcs)]['mutation_type'].values
+        
+    for bc,gene in replacement_names.items():
+        loc = np.where(np.asarray(these_bcs)==bc)[0][0]
+        these_genes[loc] = gene
+
+    # gene_bc = np.asarray([f'{gene} ({bc})' for bc,gene in zip(these_bcs,these_genes)])
+    gene_bc = np.asarray([f'{gene}' for bc,gene in zip(these_bcs,these_genes)])
+    
+    m3_0_fitness = this_fitness[np.where(np.isin(all_bcs,these_bcs))[0]][:,0]
+    
+    gene_f_names = [f'{gene} ({f})' for gene,f in zip(these_genes,m3_0_fitness)]
+
+    
+
+    ve_improvements = tools.improvements_component_by_condition(dataset_overall,this_data)
+
+    fig = plt.figure(figsize=(10,10))
+    outer_gs = GridSpec(1, 2, width_ratios=[1, 2],wspace=0.2)
+
+    ### LEFT SIDE (overall improvements)
+    left_gs = gridspec.GridSpecFromSubplotSpec(2, 1,subplot_spec = outer_gs[0],height_ratios=[1, 1])
+
+    top_left = fig.add_subplot(left_gs[0])
+    plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=top_left.transAxes)
+
+    c_jitters = [tools.jitter_point(0,0.05) for i in range(1000)]
+
+    improvement_delta(top_left,ve_improvements,0,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color,jitters=c_jitters)
+
+    bottom_left = fig.add_subplot(left_gs[1])
+    # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=bottom_left.transAxes)
+
+    cutoff = 3
+    improvement_delta(bottom_left,ve_improvements,3,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color,jitters=c_jitters)
+    bot_ymin,bot_ymax = plt.ylim()
+    plt.tight_layout()
+
+    end = len(ve_improvements[0,:])+1
+    rect = matplotlib.patches.Rectangle((cutoff-0.5,bot_ymin),end-(1+cutoff),bot_ymax-bot_ymin,
+                                        linewidth=2,edgecolor='gray',facecolor='white',alpha=0.2)
+
+    top_left.add_patch(rect)
+
+    con1 = ConnectionPatch(xyB=(3-0.5,bot_ymin), xyA=(0,1), coordsA="axes fraction", coordsB="data",
+                          axesA=bottom_left, axesB=top_left, color="gray",alpha=0.2,linewidth=2)
+    con2 = ConnectionPatch(xyB=(1+cutoff-0.5+end-(2+cutoff),bot_ymin), xyA=(1,1), coordsA="axes fraction", coordsB="data",
+                          axesA=bottom_left, axesB=top_left, color="gray",alpha=0.2,linewidth=2)
+    bottom_left.add_artist(con1)
+    bottom_left.add_artist(con2)
 
 
+    ### RIGHT SIDE (examples of improvements)
 
-    fig = plt.figure(figsize=(8,8))
+    right_gs = gridspec.GridSpecFromSubplotSpec(3, 1,subplot_spec = outer_gs[1],height_ratios=[1, 1, 1])
 
-    outer_gs = gridspec.GridSpec(2, 2, width_ratios=[5, 5], height_ratios=[5, 5])
-    inner_gs = gridspec.GridSpecFromSubplotSpec(2, 2,subplot_spec = outer_gs[1,1], width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
+    for mm,model_set in enumerate(models):
+        this_right = fig.add_subplot(right_gs[mm])
+        if mm == 0:
+            plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=this_right.transAxes)
+        
+        model_name = model_set[0]
+        model_list = model_set[1]
+        interesting_conditions = model_set[2]
 
-    x_d = model[0]
-    y_d = model
+        for c,condition in enumerate(interesting_conditions):
 
-    distance_comparison_figure(fig,inner_gs,dataset['distances'][x_d],dataset['distances'][y_d],
-                                     dataset['centroids'][x_d],dataset['centroids'][y_d],
-                                     dataset['avg_pairwise'][x_d],dataset['avg_pairwise'][y_d],
-                                      gene_list,include_ancestor=False)
+            condition_loc = np.where(np.isin(all_conditions,condition))[0][0]
+
+            this_f = this_fitness[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+            this_e = this_error[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+
+            plt.title(f'{model_name}th component')
+
+            est_list = []
+            
+            for m,model in enumerate(model_list):
+
+                ve, old_mut_locs, new_mut_locs, old_cond_locs, new_cond_locs, these_sigmas = tools.SVD_mixnmatch_locations(this_fitness,train,test,model)
+                these_sigmas = these_sigmas[:len(model),:len(model)]
+
+                estimates = [np.abs(np.dot(new_mut_locs,np.dot(these_sigmas,new_cond_locs.T))[bc,condition_loc-old_cond_locs.shape[0]]-this_f[bc])/this_e[bc] for bc in range(len(these_bcs))]
+                est_list.append(copy.copy(np.asarray(estimates)))
+
+            diff = est_list[0]-est_list[1]
+            diff = np.asarray(diff)
+
+            sorting = range(len(these_genes))
+            sorted_genes = copy.copy(these_genes[sorting])
+            
+            label_locs = []
+            label_names = []
+            verts = []
+            gene1 = sorted_genes[0]
+            
+            if mm==0 and c==0:
+                unis = np.unique(these_genes)
+                gene_means = []
+                for gene in unis:
+                    here_locs = np.where(these_genes==gene)[0]
+                    gene_means.append(np.mean(diff[here_locs]))
+
+                if uniques == 'Default':
+                    unique_genes = [gene for gene in unis[np.argsort(gene_means)[::-1]] if gene not in ['other','other_adaptive','NotSequenced','NotSequenced_adaptive','IRA1_other','ExpNeutral']]
+                    unique_names = [gene.replace('_',' ') for gene in unique_genes]
+                else:
+                    unique_genes = uniques[0]
+                    unique_nanes = uniques[1]
+            
+            for g,gene in enumerate(unique_genes):
+                if type(gene) != list:
+                    gene = [gene]
+                
+                locs = np.where(np.isin(sorted_genes,gene))[0]
+                locs = np.asarray((locs))
+
+                this_x = len(unique_genes)*c+g
+                
+                colors = [mutant_colorset[this_g] for this_g in sorted_genes[locs]]
+                if (len(locs) > 1) and (len(gene) ==1):
+                    plt.scatter([this_x+all_jitters[i] for i in range(len(locs))],(diff[sorting][locs]),color=colors,alpha=0.3)
+                    plt.plot([this_x-0.2,this_x+0.2],[np.mean(diff[sorting][locs]),np.mean(diff[sorting][locs])],color='k',alpha=0.8)
+                
+                elif len(locs) > 1:
+                    plt.scatter([this_x+all_jitters[i] for i in range(len(locs))],(diff[sorting][locs]),color=colors,alpha=0.9/len(locs))
+
+                else:
+                    plt.scatter([this_x],(diff[sorting][locs]),color=colors,alpha=0.3)
+            
+            
+            plt.axhline(0,linestyle=':',color='gray')
+
+            plt.ylim(-4.2,5.0)
+    #         plt.ylabel(f'Percent Improvement\nfrom\n{less_model}th component',rotation=90)
+            plt.ylabel(f'Improvement per mutant',rotation=90)
+            
+            for v in verts:
+                plt.axvline(v,lw=0.5,color='lightgray')
+                
+        
+        plt.xlim(-0.5,2*len(unique_genes)-0.5)
+
+        if mm ==2:
+            plt.xticks(range(2*len(unique_genes)),unique_names+unique_names,rotation=90)
+        else:
+            plt.xticks(range(2*len(unique_genes)),[],rotation=90)
+        ymin,ymax = plt.ylim()
+        
+        rect = matplotlib.patches.Rectangle((len(unique_genes)-0.5,ymin),len(unique_genes),ymax-ymin,
+                                                linewidth=0,edgecolor='lightgray',facecolor='lightgray',alpha=0.2)
+
+        plt.gca().add_patch(rect)
+
+        plt.axvline(len(unique_genes)-0.5,color='k',lw=1)
+        
+        trans = matplotlib.transforms.blended_transform_factory(plt.gca().transData, plt.gca().transAxes)
+        
+        for c,condition in enumerate(interesting_conditions):
+            if c == 0:
+                plt.text(s=f"{renamed_conditions[condition.replace('_fitness','')]}",
+                 x=(2*c+1)*(len(unique_genes))/2-0.5,y=0.95,
+                ha='center',va='center',transform=trans,
+                color=focal_conditions[interesting_conditions[0]][1],weight='semibold') 
+            else:
+                plt.text(s=f"{renamed_conditions[condition.replace('_fitness','')]}",
+                 x=(2*c+1)*(len(unique_genes))/2-0.5,y=0.95,
+                ha='center',va='center',transform=trans,
+                color=contrast_color,weight='semibold')  
 
     return fig
 
