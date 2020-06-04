@@ -46,7 +46,7 @@ renamed_conditions = {
 
 
                   # '1BB_Baffle':'Baffle(8)',
-                    '1BB_Baffle':'Baffle',
+                    '1BB_Baffle':'Baffle (B9)',
                   '1BB_1.4%Gluc' :'1.4% Gluc',
                   '1BB_1.8%Gluc' :'1.8% Gluc',
                   '1BB_0.2MNaCl' :'0.2M NaCl',
@@ -54,7 +54,7 @@ renamed_conditions = {
                   '1BB_0.2MKCl' :'0.2M KCl',
                   '1BB_0.5MKCl' :'0.5M KCl',
                   # '1BB_8.5uMGdA' :'+ 8.5uM GdA(8)',
-                    '1BB_8.5uMGdA' :'8.5uM GdA',
+                    '1BB_8.5uMGdA' :'8.5uM GdA (B9)',
                   '1BB_17uMGdA' :'17uM GdA',
                   '1BB_2ugFlu' :'2ug Flu',
                   '1BB_0.5ugFlu' :'0.5ug Flu',
@@ -62,7 +62,7 @@ renamed_conditions = {
                   '1BB_0.5%Raf' :'0.5% Raf',
                   '1BB_1%Gly' :'1% Gly',
                   '1BB_1%EtOH' :'1% EtOH',
-                  '1BB_SucRaf' :'1% Suc,Raf',
+                  '1BB_SucRaf' :'1.5% Suc, 1% Raf',
                   'Ferm_44hr_Transfer':'12hr Ferm',
                   'Ferm_40hr_Transfer':'8hr Ferm',
                   'Ferm_54hr_Transfer':'22hr Ferm',
@@ -73,39 +73,39 @@ renamed_conditions = {
                   'Resp_5Day_Transfer':'5 Day',
                   'Resp_6Day_Transfer':'6 Day',
                   'Resp_7Day_Transfer':'7 Day',
-                  'DMSO':'DMSO',
+                  'DMSO':'0.5% DMSO',
                   # 'Geldanamycin8.5uM':'+ 8.5uM GdA(1)',
-                  'Geldanamycin8.5uM':'8.5uM GdA',
+                  'Geldanamycin8.5uM':'8.5uM GdA (B1)',
                   '1.4%':'Baffle, 1.4% Gluc',
                   # '1.5%':'Baffle(10)',
-                    '1.5%':'Baffle',
+                    '1.5%':'Baffle (B8)',
                   '1.6%':'Baffle, 1.6% Gluc',
                   '1.7%':'Baffle, 1.7% Gluc',
                   '1.8%':'Baffle, 1.8% Gluc',
                   '2.5%':'Baffle, 2.5% Gluc',
-                  'Ben0.4':'Baffle, 0.4 Benomyl',
-                  'Ben2':'Baffle, 2 Benomyl',
+                  'Ben0.4':'Baffle, 0.4ug/ml Ben',
+                  'Ben2':'Baffle, 2ug/ml Ben',
                   }
 
-mutant_colorset = {'CYR1':'#cab2d6', # light purple
+mutant_colorset = {
+
                  # 'Diploid':'#fb9a99', # light red
                  # 'Diploid + Chr11Amp':'#e31a1c', # dark red for adaptive diploids
                  # 'Diploid + Chr12Amp':'#e31a1c',
                  # 'Diploid + IRA1':'#e31a1c',
                  # 'Diploid + IRA2':'#e31a1c',
                  'Diploid':'#e31a1c',
-                 'Diploid + Chr11Amp':'#fb9a99', # light red for adaptive diploids
-                 'Diploid + Chr12Amp':'#fb9a99',
-                 'Diploid + IRA1':'#fb9a99',
-                 'Diploid + IRA2':'#fb9a99',
-                 'Diploid_adaptive':'#a50f15',
-
-                 # 'Diploid':'#e31a1c',
                  # 'Diploid + Chr11Amp':'#fb9a99', # light red for adaptive diploids
                  # 'Diploid + Chr12Amp':'#fb9a99',
                  # 'Diploid + IRA1':'#fb9a99',
                  # 'Diploid + IRA2':'#fb9a99',
-                 # 'Diploid_adaptive':'#fb9a99',
+                 'Diploid + Chr11Amp':'#a50f15', # dark red for high-fitness diploids (additional mutations/clearly higher fitness)
+                 'Diploid + Chr12Amp':'#a50f15',
+                 'Diploid + IRA1':'#a50f15',
+                 'Diploid + IRA2':'#a50f15',
+                 'Diploid_adaptive':'#a50f15',
+                 'High-fitness Diploid':'#a50f15',
+
 
                  'GPB1':'#b2df8a',  # light green
                  'GPB2':'#33a02c',  # dark green
@@ -118,12 +118,19 @@ mutant_colorset = {'CYR1':'#cab2d6', # light purple
                  'NotSequenced':'gray',
                  'NotSequenced_adaptive':'gray',
                  'PDE2':'#ff7f00',  # dark orange
+                 # 'CYR1':'#cab2d6', # light purple
+                 # 'RAS2':'#b15928', # brown
+                 # 'TFS1':'#fdbf6f', # light orange
+                 'CYR1':'#b15928', # light purple
                  'RAS2':'#b15928', # brown
-                 'TFS1':'#fdbf6f', # light orange
+                 'TFS1':'#b15928', # light orange
+                 
+
                  'SSK2':'gray',
                  'SCH9':'#6a3d9a', # dark purple for TOR mutants
                  'TOR1':'#6a3d9a',
                  'KOG1':'#6a3d9a', 
+                 'TOR/SCH9 Pathway':'#6a3d9a',
                  'other':'lightgray',
                  'other_adaptive':'darkgray',
                  'ExpNeutral':'k',}
@@ -264,13 +271,14 @@ def jitter_point(mean,std=0.15):
 
 def inverse_variance_mean(means,standard_devs):
 
-    variances = standard_devs
+    variances = standard_devs**2
+    # variances = standard_devs
 
-    mean = np.sum(means/variances)/(np.sum(1/variances))
+    weighted_mean = np.sum(means/variances)/(np.sum(1/variances))
 
-    variance = (np.sum(1/variances))**(-1)
+    weighted_variance = (np.sum(1/variances))**(-1)
 
-    return mean, variance
+    return weighted_mean, weighted_variance
 
 
 def downsample_single(set1,target):
@@ -542,7 +550,8 @@ def SVD_condition_predictions(data,old_c,new_c,n_mutants,permuted_mutants=False,
 
     return rank_fit, rank_fit_by_condition
 
-def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_conditions=False,mse=False,by_condition=False,by_mutant=False,error=None,likelihood=False):
+def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_conditions=False,
+                              mse=False,by_condition=False,by_mutant=False,error=None,likelihood=False,weighted=False,all_types=None):
     
     """ 
     Bi-cross validation using multiple folds of data matrix. 
@@ -571,8 +580,9 @@ def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_c
     test_m = test[1]
 
     this_data = data
-
-
+    
+    if weighted:
+        types = all_types[test_m]
 
     assert len(train_m) + len(test_m) == this_data.shape[0]
     assert len(train_c) + len(test_c) == this_data.shape[1]
@@ -621,7 +631,9 @@ def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_c
         mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
     elif likelihood:
         mean_fits = log_likelihood(mean_mutant_prediction,both_new,both_new_error)
-    else: 
+    elif weighted:
+        mean_fits = var_explained_weighted_by_type(both_new,mean_mutant_prediction,types)[0]
+    else:
         mean_fits = var_explained(both_new,mean_mutant_prediction)[0]
 
     mean_fits_by_condition = []
@@ -632,6 +644,8 @@ def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_c
                 mean_fits_by_condition.append(np.sum(np.square(both_new[:,k]-mean_mutant_prediction[:,k])))
             elif likelihood:
                 mean_fits_by_condition.append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
+            elif weighted:
+                mean_fits_by_condition.append(var_explained(both_new[:,k],mean_mutant_prediction[:,k],types)[0])
             else:
                 mean_fits_by_condition.append(var_explained(both_new[:,k],mean_mutant_prediction[:,k])[0])
 
@@ -654,7 +668,8 @@ def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_c
         guesses.append(A_hat)
         if mse:
             fit_by_rank.append(np.sum(np.square(both_new-A_hat)))
-
+        elif weighted:
+          fit_by_rank.append(var_explained_weighted_by_type(both_new,A_hat,types)[0])
         else:
             fit_by_rank.append(var_explained(both_new,A_hat)[0])
 
@@ -667,6 +682,8 @@ def SVD_predictions_train_test(data,train,test,permuted_mutants=False,permuted_c
                     fits_by_condition[rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
                 elif likelihood:
                     fits_by_condition[rank-1].append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
+                elif weighted:
+                    fits_by_condition[rank-1].append(var_explained_weighted_by_type(both_new[:,k],A_hat[:,k],types)[0])
                 else:
                     fits_by_condition[rank-1].append(var_explained(both_new[:,k],A_hat[:,k])[0])
         if by_mutant: 
@@ -925,170 +942,6 @@ def SVD_locations(this_data,train_cols,test_cols,training_bcs,testing_bcs,model,
         
     return var_explained(both_new,A_hat)[0], train_mutant_locs, test_mutant_locs.swapaxes(0,1), train_condition_locs.swapaxes(0,1), test_condition_locs
 
-
-def SVD_predictions_train_test_weighted(data,train,test,
-                                        permuted_mutants=False,permuted_conditions=False,
-                                        mse=False,by_condition=False,by_mutant=False,error=None,likelihood=False,
-                                        weighted_by_type=True,types=None):
-    
-    """ 
-    Bi-cross validation using multiple folds of data matrix. 
-
-    Method from Owen and Perry 2009.
-
-    For each fold, we have the following data matrix:
-
-                        "new conditions"  "old conditions"
-    "new mutants"              A                  B
-    "old mutants"              C                  D
-
-    We first perform SVD on the D sub-matrix (using only old mutants and old conditions).
-    For every pseudo inverse rank k approximation of D (denoted by D_k^+), we matrix multiply B * D_k^+ * C which gives the best estimate for A from the D_k approximation.
-
-    We then evaluate prediction ability use the residual (eqn 3.3 from Owen and Perry 2009):
-
-        A - B * D_k^+ * C 
-
-    """
-
-    train_c = train[0]
-    train_m = train[1]
-
-    test_c = test[0]
-    test_m = test[1]
-
-    this_data = data
-    
-    assert len(train_m) + len(test_m) == this_data.shape[0]
-    assert len(train_c) + len(test_c) == this_data.shape[1]
-
-    max_rank = min([len(train_c),len(train_m)])
-
-    fits_by_condition = []
-    fits_by_mutant = []
-    mean_fits =[]
-
-    if permuted_mutants and permuted_conditions:
-        this_data = copy.copy(data)
-        this_data[train_m,train_c] = np.random.permutation(this_data[train_m,train_c].ravel()).reshape(len(train_m),len(train_c))
-        subset = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].ravel()
-
-    elif permuted_mutants:
-        this_data = copy.copy(data)
-        for mut in train_m:
-            this_data[mut,train_c] = np.random.permutation(this_data[mut,train_c])
-
-    elif permuted_conditions:
-
-        this_data = np.swapaxes(copy.copy(data),0,1)
-        for cond in train_c:
-            this_data[cond,train_m] = np.random.permutation(this_data[cond,train_m])
-        this_data = np.swapaxes(this_data,0,1)
-
-    else:
-        this_data = copy.copy(data)
-        
-    if weighted_by_type:
-        train_count,train_inv_count = count_matrix(types[train_m],this_data[train_m,:])
-        test_count,test_inv_count = count_matrix(types[test_m],this_data[test_m,:])
-        
-        order = np.argsort(np.concatenate((train_m,test_m)))
-        
-        all_count = np.concatenate((train_count,test_count))[order]
-        all_inv_count = np.concatenate((train_inv_count,test_inv_count))[order]
-        
-        weighted_data = np.multiply(all_inv_count,this_data)
-    else:
-        train_count = np.ones(this_data[train_m,:].shape)
-        train_inv_count = np.ones(this_data[train_m,:].shape)
-        test_count = np.ones(this_data[test_m,:].shape)
-        test_inv_count = np.ones(this_data[test_m,:].shape)
-        
-        order = np.argsort(np.concatenate((train_m,test_m)))
-        
-        all_count = np.concatenate((train_count,test_count))[order]
-        all_inv_count = np.concatenate((train_inv_count,test_inv_count))[order]
-        
-        weighted_data = copy.copy(this_data)
-        
-    both_old = weighted_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
-    both_old_unweighted = this_data[np.repeat(train_m,len(train_c)),np.tile(train_c,len(train_m))].reshape(len(train_m),len(train_c))
-
-    U2, s2, V2 = np.linalg.svd(both_old)
-    
-    mut_new = weighted_data[np.repeat(test_m,len(train_c)),np.tile(train_c,len(test_m))].reshape(len(test_m),len(train_c))  
-    cond_new = weighted_data[np.repeat(train_m,len(test_c)),np.tile(test_c,len(train_m))].reshape(len(train_m),len(test_c))
-    both_new = weighted_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
-    
-    both_new_unweighted = this_data[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
-
-    if likelihood:
-        both_new_error = error[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
-
-    mean_mutant_prediction = np.repeat(np.mean(mut_new,axis=1),len(test_c)).reshape(len(test_m),len(test_c))
-
-    if mse:
-        mean_fits = np.sum(np.square(both_new-mean_mutant_prediction))
-    elif likelihood:
-        mean_fits = log_likelihood(mean_mutant_prediction,both_new,both_new_error)
-    else: 
-        mean_fits = tools.var_explained(both_new,mean_mutant_prediction)[0]
-
-    mean_fits_by_condition = []
-
-    if by_condition:
-        for k in range(len(test_c)):
-            if mse:
-                mean_fits_by_condition.append(np.sum(np.square(both_new[:,k]-mean_mutant_prediction[:,k])))
-            elif likelihood:
-                mean_fits_by_condition.append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
-            else:
-                mean_fits_by_condition.append(tools.var_explained(both_new[:,k],mean_mutant_prediction[:,k])[0])
-
-
-    fit_by_rank = []
-    guesses = []
-    dhats = []
-    for rank in range(1,max_rank+1):
-
-        new_s = np.asarray(list(s2[:rank]) + list(np.zeros(s2[rank:].shape)))
-        S2 = np.zeros((U2.shape[0],V2.shape[0]))
-        S2[:min([U2.shape[0],V2.shape[0]]),:min([U2.shape[0],V2.shape[0]])] = np.diag(new_s)
-
-        D_hat = train_count[:,:len(train_c)]*np.dot(U2[:,:rank],np.dot(S2,V2)[:rank,:])
-        A_hat = test_count[:,:len(test_c)]*np.dot(mut_new,np.dot(np.linalg.pinv(D_hat),cond_new))
-
-        dhats.append(D_hat)
-
-        guesses.append(A_hat)
-        if mse:
-            fit_by_rank.append(np.sum(np.square(both_new_unweighted-A_hat)))
-
-        else:
-            fit_by_rank.append(tools.var_explained(both_new_unweighted,A_hat)[0])
-
-        fits_by_condition.append([])
-        fits_by_mutant.append([])
-
-        if by_condition:
-            for k in range(len(test_c)):
-                if mse:
-                    fits_by_condition[rank-1].append(np.sum(np.square(both_new[:,k]-A_hat[:,k])))
-                elif likelihood:
-                    fits_by_condition[rank-1].append(log_likelihood(mean_mutant_prediction[:,k],both_new[:,k],both_new_error[:,k]))
-                else:
-                    fits_by_condition[rank-1].append(tools.var_explained(both_new_unweighted[:,k],A_hat[:,k])[0])
-        if by_mutant: 
-            for j in range(len(test_m)):
-                if mse:
-                    fits_by_mutant[rank-1].append(np.sum(np.square(both_new[j,:]-A_hat[j,:])))
-                elif likelihood:
-                    fits_by_mutant[rank-1].append(log_likelihood(mean_mutant_prediction[j,:],both_new[j,:],both_new_error[j,:]))
-                else:
-                    fits_by_mutant[rank-1].append(tools.var_explained(both_new_unweighted[j,:],A_hat[j,:])[0])
-
-        
-    return fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits, mean_fits_by_condition, guesses, dhats, both_old
 
 def SVD_mixnmatch_locations(data,train,test,component_set,by_condition=False,permuted_mutants=False,permuted_conditions=False,mse=False,by_mutant=False):
     
@@ -1439,7 +1292,7 @@ def plot_mutant_components(ax,U,this_data,x_component,y_component,mutant_colorse
 
     return ax
 
-def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant_sets=False,full_output=False,mse=True):
+def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant_sets=False,full_output=False,mse=True,weighted=False):
 
     best_guesses = {}
     all_guesses = []
@@ -1493,7 +1346,7 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant
         max_rank = min([len(train[0]),len(train[1])])
 
         # output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=True)
-        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=mse,error=this_error)
+        output = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,mse=mse,error=this_error,weighted=weighted,all_types=this_data['mutation_type'].values[all_mut_locs])
 
         best_by_rank = output[0]
         all_guesses.append(best_by_rank)
@@ -1504,7 +1357,7 @@ def SVD_train_test_folds(this_data,cols_avail,mutants_avail,n_folds,fixed_mutant
       return best_guesses, all_guesses, output
 
 
-def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list,fixed_mutant_sets=False):
+def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_list,fixed_mutant_sets=False,n_cross_validations=1000):
 
     data_situation = {}
 
@@ -1516,15 +1369,27 @@ def situate_data(this_data,train_cols,test_cols,training_bcs,testing_bcs,gene_li
     ## CROSS VALIDATION STAGE ON TRAINING DATA
     cols_avail = train_cols
     if not fixed_mutant_sets:
-        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,1000)
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,n_cross_validations)
     else:
-        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,[training_bcs,testing_bcs],1000,fixed_mutant_sets=True)
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,[training_bcs,testing_bcs],n_cross_validations,fixed_mutant_sets=True)
 
     CV_best_rank_index =  np.where(np.mean(CV_all_guesses,axis=0)==min(np.mean(CV_all_guesses,axis=0)))[0][0]
 
     data_situation['CV_best_guesses'] = CV_best_guesses
     data_situation['CV_all_guesses'] = CV_all_guesses
     data_situation['CV_best_rank_index'] = CV_best_rank_index
+
+    if not fixed_mutant_sets:
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,training_bcs,n_cross_validations,weighted=True)
+    else:
+        CV_best_guesses, CV_all_guesses = SVD_train_test_folds(this_data,cols_avail,[training_bcs,testing_bcs],n_cross_validations,fixed_mutant_sets=True,weighted=True)
+
+    CV_best_rank_index =  np.where(np.mean(CV_all_guesses,axis=0)==min(np.mean(CV_all_guesses,axis=0)))[0][0]
+
+    data_situation['CV_best_guesses_weighted'] = CV_best_guesses
+    data_situation['CV_all_guesses_weighted'] = CV_all_guesses
+    data_situation['CV_best_rank_index_weighted'] = CV_best_rank_index
+
 
 
     ## PREDICTION STAGE 
@@ -1674,7 +1539,7 @@ def text_color_legend(ax, visible_handles=False, legend_prop={'weight':'semibold
     return L
 
 
-def select_train_test_mutants(fitness_data,max_train=4,max_test=10,exclusion_list=['other','NotSequenced','NotSequenced_adaptive','ExpNeutral'],include_all_neutrals=True):
+def select_train_test_mutants(fitness_data,max_train=4,max_test=10,exclusion_list=['other','NotSequenced','NotSequenced_adaptive','ExpNeutral','other_adaptive'],test_only=['other_adaptive','ExpNeutral']):
 
     mutation_types = np.unique(fitness_data['mutation_type'].values)
 
@@ -1699,9 +1564,9 @@ def select_train_test_mutants(fitness_data,max_train=4,max_test=10,exclusion_lis
             # print(mut_type,len(this_mut_type.index),n_samples)
             test_list = sorted(np.unique(test_list + list(np.random.choice(options,n_samples,replace=False))))
 
-    if include_all_neutrals:
-        exp_neutral =  fitness_data[fitness_data['mutation_type'].isin(['ExpNeutral'])]
-        test_list = sorted(np.unique(test_list + [bc for bc in list(exp_neutral['barcode'].values) if bc not in test_list]))
+    for mut_type in test_only:
+        this_mut_type =  fitness_data[fitness_data['mutation_type'].isin([mut_type])]
+        test_list = sorted(np.unique(test_list + [bc for bc in list(this_mut_type['barcode'].values) if bc not in test_list]))
         # print(len(exp_neutral['barcode'].values))
 
     test_list = [bc for bc in test_list if bc not in train_list]
@@ -1836,6 +1701,144 @@ def improvements_component_by_condition(dataset,this_data,full_model=range(9)):
         ve_improvements_adding.append(np.diff(ves[c]))
 
     return np.asarray(ve_improvements_adding)
+
+def leave_one_out_analysis(this_data,subtle_conditions,strong_conditions,training_bcs,testing_bcs,weighted=False):
+
+    # print(weighted)
+    
+    left_out_fits = {}
+
+    all_guesses = []
+
+    for left_out_index in range(len(subtle_conditions)):
+        train_cols = subtle_conditions[:left_out_index] + subtle_conditions[left_out_index+1:]
+        test_cols = [subtle_conditions[left_out_index]] + strong_conditions
+        
+        fitness_cols = train_cols + test_cols
+
+        fitness = this_data[fitness_cols].values
+
+        n_mutants = fitness.shape[0]
+        n_conditions = fitness.shape[1]
+
+        train_conditions = train_cols
+        train_locs = np.where(np.isin(fitness_cols,train_conditions))[0]
+
+        test_conditions = test_cols
+        test_locs = np.where(np.isin(fitness_cols,test_conditions))[0]
+
+        all_locs = sorted(list(train_locs)+list(test_locs))
+
+        used_mutants = [bc for bc in this_data['barcode'].values if bc in (list(training_bcs) + list(testing_bcs))]
+
+        all_mut_locs =sorted(list(np.where(np.isin(this_data['barcode'].values,used_mutants))[0]))
+
+        this_fitness = fitness[all_mut_locs,:][:,all_locs]
+        new_train_locs = np.where(np.isin(all_locs,train_locs))[0]
+        new_test_locs = np.where(np.isin(all_locs,test_locs))[0]  
+
+        train = [new_train_locs,np.where(np.isin(used_mutants,training_bcs))[0]]
+        test = [new_test_locs,np.where(np.isin(used_mutants,testing_bcs))[0]]
+
+        train_c = train[0]
+        train_m = train[1]
+
+        test_c = test[0]
+        test_m = test[1]
+
+        both_new = this_fitness[np.repeat(test_m,len(test_c)),np.tile(test_c,len(test_m))].reshape(len(test_m),len(test_c))
+
+        all_m = sorted(list(train_m) + list(test_m))
+        new_cond = this_fitness[np.repeat(all_m,len(test_c)),np.tile(test_c,len(all_m))].reshape(len(all_m),len(test_c))
+
+        fit_by_rank, fits_by_condition, fits_by_mutant, mean_fits,mean_fits_by_condition, guesses, dhats, both_old = SVD_predictions_train_test(this_fitness,train,test,by_condition=True,by_mutant=True)
+
+        all_guesses.append(guesses)
+
+        if weighted:
+            types = this_data['mutation_type'].values[all_mut_locs]
+            fits_by_condition = [np.asarray([var_explained_weighted_by_type(both_new[:,i],guesses[model][:,i],types[test_m])[0] for i in range(both_new.shape[1])]) for model in range(len(train_c))]
+
+        left_out_fits[subtle_conditions[left_out_index]] = fits_by_condition
+
+    return left_out_fits, all_guesses
+
+def improvements_component_by_condition_leaveout(dataset,this_data,full_model=range(9)):
+
+    this_fitness = dataset['this_fitness']
+    this_error = dataset['this_error']
+    train = dataset['train']
+    test = dataset['test']
+
+    train_conditions = dataset['train_conditions']
+    test_conditions = dataset['test_conditions']
+
+    all_conditions = train_conditions + test_conditions
+
+    all_bcs = sorted(list(dataset['training_bcs'])+list(dataset['testing_bcs']))
+
+    training_bcs = list(dataset['training_bcs'])
+    testing_bcs = list(dataset['testing_bcs'])
+
+    these_bcs = testing_bcs
+    these_genes = this_data[this_data['barcode'].isin(these_bcs)]['mutation_type'].values
+
+    left_out_fits, all_guesses = leave_one_out_analysis(this_data,train_conditions,test_conditions,training_bcs,testing_bcs,weighted=True)
+
+    # print(left_out_fits)
+
+    ves = []
+
+    ### For train conditions, use the model where that one was held out
+    for c,condition in enumerate(train_conditions):
+
+        ves.append([])
+
+        for this_m in range(1,len(full_model)+1):
+
+            # left_out_fits[train_conditions[left_out_index]][model][0]
+
+            # print(left_out_fits[train_conditions[c]][this_m-1][0])
+
+            ves[c].append(left_out_fits[condition][this_m-1][0])
+
+
+    ### For Test conditions, use the full model
+    for c,condition in enumerate(test_conditions):
+
+        c = len(train_conditions) + c
+
+        condition_loc = np.where(np.isin(all_conditions,condition))[0][0]
+
+        this_f = this_fitness[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+        this_e = this_error[np.where(np.isin(all_bcs,these_bcs))[0]][:,condition_loc]
+        
+        ves.append([])
+        
+        for this_m in range(1,len(full_model)+1):
+            
+            this_model = list(range(this_m))
+
+            ve, old_mut_locs, new_mut_locs, old_cond_locs, new_cond_locs, these_sigmas = SVD_mixnmatch_locations(this_fitness,train,test,this_model)
+    
+            these_sigmas = these_sigmas[:len(this_model),:len(this_model)]
+            
+            if condition in test_conditions:
+                this_estimates = [np.dot(new_mut_locs,np.dot(these_sigmas,new_cond_locs.T))[bc,condition_loc-old_cond_locs.shape[0]] for bc in range(len(these_bcs))]
+            else:
+                this_estimates = [np.dot(new_mut_locs,np.dot(these_sigmas,old_cond_locs.T))[bc,condition_loc] for bc in range(len(these_bcs))]    
+        
+            this_ve = var_explained(this_f,this_estimates)
+            this_ve = var_explained_weighted_by_type(this_f,this_estimates,these_genes)
+            
+            ves[c].append(this_ve[0])
+    
+    ve_improvements_adding = []      
+    for c,condition in enumerate(all_conditions):
+        ve_improvements_adding.append(np.diff(ves[c]))
+
+    return np.asarray(ve_improvements_adding)
+
 
 
 
