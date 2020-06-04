@@ -1,3 +1,5 @@
 MutationChecks/
 *.DS_Store
 ~$*
+*.docx
+*.pages
