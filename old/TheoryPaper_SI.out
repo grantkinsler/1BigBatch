@@ -1,6 +1,0 @@
-\BOOKMARK [1][-]{section.1}{Mathematical and Computational Details}{}% 1
-\BOOKMARK [2][-]{subsection.1.1}{Guassian fitness function uniquely satisfies desired properties}{section.1}% 2
-\BOOKMARK [2][-]{subsection.1.2}{Derivation of Score Metric}{section.1}% 3
-\BOOKMARK [2][-]{subsection.1.3}{Constraining symmetry}{section.1}% 4
-\BOOKMARK [2][-]{subsection.1.4}{Optimization Implementation}{section.1}% 5
-\BOOKMARK [2][-]{subsection.1.5}{Simulation Implementation}{section.1}% 6

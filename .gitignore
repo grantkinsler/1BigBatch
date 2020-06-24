@@ -3,3 +3,5 @@ MutationChecks/
 ~$*
 *.docx
 *.pages
+SRA_upload_file_rename/
+old*
