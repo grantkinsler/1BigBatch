@@ -7,6 +7,7 @@ import matplotlib
 from matplotlib import gridspec
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
+import matplotlib.ticker as mtick
 from itertools import combinations
 from scipy.spatial import distance
 from tools import mutant_colorset
@@ -16,6 +17,7 @@ from tools import tick_base_calculator
 from matplotlib.patches import ConnectionPatch
 from adjustText import adjust_text
 import copy
+import matplotlib.ticker as plticker
 sns.set_color_codes()
 
 
@@ -37,6 +39,7 @@ def improvement_delta(ax,ve_improvements,cutoff,train_conditions,test_conditions
         running_subtle += ve_improvements[c,:]
 
     print('Subtle Mean',np.mean(ve_improvements[range(len(train_conditions)),cutoff:],axis=0))
+    print('Subtle Max',np.max(ve_improvements[range(len(train_conditions)),cutoff:],axis=0))
         
     ax.scatter([i-0.2 for i in range(len(ve_improvements[0,cutoff:]))],np.mean(ve_improvements[range(len(train_conditions)),cutoff:],axis=0),color=line_color,alpha=0.75,marker='_')
 
@@ -782,77 +785,6 @@ def distance_comparison_figure(fig,gs,distances_x,distances_y,geom_medians_x,geo
 
 
 
-# def Figure4(dataset,gene_list):
-#     all_guesses = dataset['CV_all_guesses']
-#     both_old = dataset['both_old']
-#     dhats = dataset['dhats']
-#     this_fitness  = dataset['this_fitness']
-#     train  = dataset['train']
-#     test = dataset['test']
-#     both_new = dataset['both_new']
-#     guesses = dataset['guesses']
-#     model = dataset['CV_best_rank_index']
-#     test_conditions  = dataset['test_conditions']
-
-#     fig = plt.figure(figsize=(10,10))
-
-#     # fig = plt.figure(figsize=(4+1,4+1))
-#     outer_gs = gridspec.GridSpec(2, 2, width_ratios=[5, 5], height_ratios=[5, 5])
-#     # gs = GridSpec(3, 3, width_ratios=[5, 4, 1], height_ratios=[5, 1, 4])
-
-#     ax1 = fig.add_subplot(outer_gs[0,0])
-#     plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
-
-#     sns.violinplot(data=np.asarray(all_guesses),color='lightgray',alpha=0.1)
-#     plt.plot(np.mean(all_guesses,axis=0),'k',label='Average')
-#     plt.ylim(0,10)
-#     plt.xticks(range(len(np.mean(all_guesses,axis=0))),range(1,len(np.mean(all_guesses,axis=0))+1))
-#     plt.xlabel('Number of phenotypes')
-#     plt.ylabel('Mean Squared Error')
-
-
-#     # ax2 = fig.add_subplot(outer_gs[0,1])
-#     # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
-#     inner_gs = gridspec.GridSpecFromSubplotSpec(2, 2,subplot_spec = outer_gs[0,1], width_ratios=[4, 1], height_ratios=[1, 4],hspace=0.0,wspace=0.0)
-
-#     # plt.text(s='Visualization of Subtle predicting far',x=0.1,y=0.5)
-#     # plt.scatter(both_old,dhats[0],alpha=0.5,label='1 component model')
-#     # plt.scatter(both_old,dhats[model],alpha=0.5,label=f'{model + 1} component model')
-#     # plt.xlabel('Measured Training Data')
-#     # plt.ylabel('Estimated Training Data')
-#     # this_min = min([np.min(both_old),np.min(dhats[model])])
-#     # this_max = max([np.max(both_old),np.max(dhats[model])])
-#     # plt.plot([this_min,this_max],[this_min,this_max],'k--')
-#     # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.1))
-
-#     # plt.annotate(fr'1 component model, $R^2$ = {tools.var_explained(both_old,dhats[0])[0]:.3g}',xy=(0.25,0.1),
-#     #              color=sns.color_palette()[0],xycoords='axes fraction')
-
-#     # xdisplay, ydisplay = ax2.transAxes.transform_point((0.3, 0.0))
-#     # plt.annotate(fr'{model+1} component model, $R^2$ = {tools.var_explained(both_old,dhats[model])[0]:.3g}',xy=(0.25,0.05),
-#     #              color=sns.color_palette()[1],xycoords='axes fraction')
-#     # plt.legend()
-
-#     ax3 = fig.add_subplot(outer_gs[1,0])
-#     # plt.text(s='C',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax3.transAxes)
-
-#     largescale_predictions_graph(ax3,this_fitness,train,test,both_new,guesses,model,test_conditions)
-
-#     plt.xlabel('Condition')
-
-
-
-#     # ax5.xlabel(f'{x_d+1}')
-#     # ax5.ylabel(f'{y_d+1}')
-
-#     plt.tight_layout()
-
-#     # plt.savefig('Figure4_working_testBC_withC.pdf',bbox_inches='tight')
-
-#     return fig
-
-import matplotlib.ticker as plticker
-
 def prediction_examples(fig,gs,dataset,this_data,example_conditions,models,legend=True,legend_cols=4,weighted=True,label='default',style='default',
     gene_label_key = {'Neutral':['ExpNeutral'],
                 'Diploid':['Diploid'],
@@ -864,8 +796,8 @@ def prediction_examples(fig,gs,dataset,this_data,example_conditions,models,legen
                   'GPB1':['GPB1'],
                   'GPB2':['GPB2'],
                   'PDE2':['PDE2'],
-                  'Other RAS/PKA':['RAS2','CYR1','TFS1'],
-                  'TOR/SCH9 pathway':['KOG1','TOR1','SCH9'],
+                  'Other Ras/PKA':['RAS2','CYR1','TFS1'],
+                  'TOR/Sch9 pathway':['KOG1','TOR1','SCH9'],
                   'Other adaptive':['other_adaptive']
                  }):
 
@@ -1031,61 +963,6 @@ def all_example_predictions(dataset,gene_list,this_data,example_conditions,model
     return fig
 
 
-# def Figure4_w_examples(dataset,gene_list,this_data,example_conditions,models='default',weighted=True,style='default',permute=True,build_up=False,labels=False,subtle=True):
-#     all_guesses = dataset['CV_all_guesses']
-#     both_old = dataset['both_old']
-#     dhats = dataset['dhats']
-#     this_fitness  = dataset['this_fitness']
-#     train  = dataset['train']
-#     test = dataset['test']
-#     both_new = dataset['both_new']
-#     guesses = dataset['guesses']
-#     test_conditions  = dataset['test_conditions']
-#     train_conditions = dataset['train_conditions']
-#     if models == 'default':
-#         models = [dataset['CV_best_rank_index']]
-
-#     fig = plt.figure(figsize=(6+(2)*len(example_conditions),12))
-
-#     # fig = plt.figure(figsize=(4+1,4+1))
-#     outer_gs = gridspec.GridSpec(2, 2, width_ratios=[6, 2*len(example_conditions)], height_ratios=[4, 4])
-#     # gs = GridSpec(3, 3, width_ratios=[5, 4, 1], height_ratios=[5, 1, 4])
-
-    
-
-#     left_gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outer_gs[0,0],height_ratios=[1,3],hspace=0.05,wspace=0.25)
-    
-#     # ax1 = fig.add_subplot(left_gs[0])
-
-#     # if labels:
-#     #     plt.text(s='A',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
-
-
-#     # largescale_predictions_graph(ax1,this_fitness,train,test,both_new,guesses,models,test_conditions,dataset,this_data,
-#     #                             weighted=weighted,style=style,permute=permute,build_up=build_up)
-
-
-#     largescale_predictions_with_improvement(fig,left_gs,this_fitness,train,test,both_new,guesses,models,train_conditions,test_conditions,dataset,this_data,
-#                                             weighted=weighted,style=style,permute=permute,build_up=build_up,include_subtle=subtle)
-
-#     # ax2 = fig.add_subplot(left_gs[1])
-
-
-
-
-
-#     # plt.text(s='B',x=-0.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax2.transAxes)
-#     inner_gs = gridspec.GridSpecFromSubplotSpec(1+len(models),len(example_conditions),subplot_spec = outer_gs[0,1],hspace=0.1,wspace=0.25)
-#     prediction_examples(fig,inner_gs,dataset,this_data,example_conditions,models,weighted=weighted,label=False,style=style)
-
-#     # ax2 = fig.add_subplot(outer_gs[0,1])
-#     # if labels:
-#     #     plt.text(s='C',x=1.1,y=1.02,fontsize=15,fontweight='semibold',transform=ax1.transAxes)
-
-
-
-#     return fig
-
 def largescale_predictions_with_improvement_leaveout(fig,gs,this_fitness,train,test,both_new,guesses,models,train_conditions,test_conditions,dataset,this_data,n_perms=100,ymin=-0.5,ymax=1.0,
     guide_color='lightgray',guide_alpha=0.2,weighted=True,style='default',permute=True,build_up=False,include_subtle=True,all_shown=False,labels=False,ylim_adjust=False):
 
@@ -1204,7 +1081,11 @@ def largescale_predictions_with_improvement_leaveout(fig,gs,this_fitness,train,t
             for left_out_index in range(len(train_conditions)):
                 arrayed.append(left_out_fits[train_conditions[left_out_index]][model][1:])
 
+
             full_thismodel = full_models[m]
+
+            print(model)
+            print(full_thismodel)
 
             arrayed = np.asarray(arrayed)
             if model == models[0]:
@@ -1287,7 +1168,7 @@ def largescale_predictions_with_improvement_leaveout(fig,gs,this_fitness,train,t
     arrow_right = bottom_ax.transData.transform_point((n_m3_conditions+1, 0))
 
     arrow_width = (arrow_right[0]-arrow_left[0])/2
-    print(arrow_left,arrow_right,arrow_width)
+    # print(arrow_left,arrow_right,arrow_width)
 
     trans_arrow = matplotlib.transforms.blended_transform_factory(bottom_ax.transData, bottom_ax.transAxes)
 
@@ -1316,8 +1197,8 @@ def largescale_predictions_with_improvement_leaveout(fig,gs,this_fitness,train,t
             arrayed.append((np.asarray(left_out_fits[train_conditions[left_out_index]][model1][1:])-np.asarray(left_out_fits[train_conditions[left_out_index]][model2][1:]))/np.asarray(left_out_fits[train_conditions[left_out_index]][model1][1:]))
         
         full_difference = (full_models[0]-full_models[1])/full_models[0]
-
-
+        print(full_difference)
+        print(np.mean(full_difference))
         arrayed = np.asarray(arrayed)
         # plt.errorbar(range(len(train_conditions),len(train_conditions)+len(test_conditions)),np.median(arrayed,axis=0),yerr=np.asarray([np.mean(arrayed,axis=0)-np.min(arrayed,axis=0),np.max(arrayed,axis=0)-np.mean(arrayed,axis=0)]),
         #         marker='o',markeredgecolor=model_color,markerfacecolor=model_color,linestyle='None',ecolor=model_color)
@@ -1326,6 +1207,8 @@ def largescale_predictions_with_improvement_leaveout(fig,gs,this_fitness,train,t
     if ylim_adjust == False:
         plt.ylim(-0.1,0.8)
     ymin,ymax = plt.ylim()
+
+    bottom_ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
 
     
 
@@ -1706,7 +1589,7 @@ def prediction_accuracy_by_type(dataset,this_data,model,testing_only_types,n_per
 
 
 def Figure5_new(dataset_overall,dataset_examples,this_data,models,focal_conditions,full_model=range(9),replacement_names = {60700:'SSK2'},uniques='Default',contrast_color='k',style='Default',box_annotation=True,
-    gene_rename = {'TOR1':'TOR/SCH9 Pathway','SCH9':'TOR/SCH9 Pathway','KOG1':'TOR/SCH9 Pathway','Diploid_adaptive':'High-fitness Diploid'}):
+    gene_rename = {'TOR1':'TOR/Sch9 Pathway','SCH9':'TOR/Sch9 Pathway','KOG1':'TOR/Sch9 Pathway','Diploid_adaptive':'High-fitness Diploid'}):
         #         unique_genes = [['Diploid + Chr11Amp','Diploid + Chr12Amp'],
     #                         ['KOG1','TFS1','RAS2','SCH9','TOR1','SSK2'],
     #                         ['GPB2'],['IRA1_nonsense'],['Diploid'],['IRA1_missense'],['PDE2'],['Diploid_adaptive']]
@@ -2055,6 +1938,8 @@ def svd_noise_comparison_figure(ax,this_f,err,n_pulls,yscale='linear',permutatio
     # Mean empirical noise max
     mean_noise_max = np.mean(noise_s_list,axis=0)[0] 
     print(mean_noise_max)
+    print(mean_noise_max**2/np.sum(np.square(s)))
+    # print(mean_noise_max**2/np.sum(np.square(s))
 
     if show_error:
         plt.axhline(mean_noise_max**2/np.sum(np.square(s)),linestyle=':',color = marker_color ,alpha=0.8)
