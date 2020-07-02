@@ -341,7 +341,7 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
 
 
 def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3_conditions,gene_list,
-    ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=11,style='default',side_bars=True,faded_alpha=0.3,vline=True,tubes=True,eye_guides=True):
+    ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=11,style='default',side_bars=True,faded_alpha=0.3,vline=True,tubes=True,eye_guides=True,gene_list_labels='default'):
 
     if style == 'dark':
         plt.style.use('dark_background')
@@ -355,6 +355,9 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
         emph_alpha = 0.8
         guide_color = 'gray'
         guide_alpha = 0.07
+
+    if gene_list_labels == 'default':
+        gene_list_labels =gene_list
 
     mutant_data = this_data[this_data['barcode'].isin(bc_list)]
 
@@ -485,9 +488,10 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
     if legend:
         legend_split = np.ceil(len(gene_list)/legend_cols)
         for g,gene in enumerate(gene_list):
+            gene_label = gene_list_labels[g] 
             x_loc = 0.01+np.floor((g)/legend_split)*0.3
             y_loc = 0.05*(legend_split-1)-0.05*(g%legend_split)+0.02
-            plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=fontsize,
+            plt.text(s=f"{gene_label.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=fontsize,
                   fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
 
 
@@ -786,18 +790,18 @@ def distance_comparison_figure(fig,gs,distances_x,distances_y,geom_medians_x,geo
 
 
 def prediction_examples(fig,gs,dataset,this_data,example_conditions,models,legend=True,legend_cols=4,weighted=True,label='default',style='default',
-    gene_label_key = {'Neutral':['ExpNeutral'],
-                'Diploid':['Diploid'],
-                 'High-fitness Diploid':['Diploid_adaptive','Diploid + Chr11Amp','Diploid + Chr12Amp','Diploid + IRA1','Diploid + IRA2'],
-                  # '':['Diploid'],
-                  'IRA1 nonsense':['IRA1_nonsense'],
-                  'IRA1 missense':['IRA1_missense'],
-                  'IRA2':['IRA2'],
-                  'GPB1':['GPB1'],
-                  'GPB2':['GPB2'],
-                  'PDE2':['PDE2'],
-                  'Other Ras/PKA':['RAS2','CYR1','TFS1'],
-                  'TOR/Sch9 pathway':['KOG1','TOR1','SCH9'],
+
+                 gene_label_key = {'Neutral':['ExpNeutral'],
+                 'Diploid':['Diploid'],
+                 "Diploid w/\nadd'l mutation":['Diploid_adaptive','Diploid + Chr11Amp','Diploid + Chr12Amp','Diploid + IRA1','Diploid + IRA2'],
+                  '$\\bf{IRA1}$ $\\bf{nonsense}$':['IRA1_nonsense'],
+                  '$\\bf{IRA1}$ $\\bf{missense}$':['IRA1_missense'],
+                  '$\\bf{IRA2}$':['IRA2'],
+                  '$\\bf{GPB1}$':['GPB1'],
+                  '$\\bf{GPB2}$':['GPB2'],
+                  '$\\bf{PDE2}$':['PDE2'],
+                  'Other RAS/PKA':['RAS2','CYR1','TFS1'],
+                  'TOR/SCH9 pathway':['KOG1','TOR1','SCH9'],
                   'Other adaptive':['other_adaptive']
                  }):
 
@@ -929,8 +933,9 @@ def prediction_examples(fig,gs,dataset,this_data,example_conditions,models,legen
             legend_split = np.ceil(len(gene_list)/legend_cols)
             for g,gene in enumerate(gene_list):
                 x_loc = 0.01+np.floor((g)/legend_split)*1.2
+                # x_loc = 0.01+np.floor((g)/legend_split)*1.3-0.5
                 y_loc = 0.05*(legend_split-1)-0.15*(g%legend_split)-0.65
-                plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=12,
+                plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=12,va='top',
                       fontweight='semibold',color=mutant_colorset[gene_label_key[gene][0]],transform=ax.transAxes)
 
     return fig
@@ -1606,6 +1611,24 @@ def Figure5_new(dataset_overall,dataset_examples,this_data,models,focal_conditio
         zeroline_color = 'gray'
         dot_alpha=0.7
 
+    gene_label_names = {'GPB2':'$\it{GPB2}$',
+ 'Diploid + Chr11Amp':'Diploid + Chr11Amp',
+ 'Diploid + IRA1':'Diploid + $\it{IRA1}$',
+ 'CYR1':'$\it{CYR1}$',
+ 'IRA1 missense':'$\it{IRA1}$ $\it{missense}$',
+ 'PDE2':'$\it{PDE2}$',
+ 'TOR/Sch9 Pathway':'TOR/Sch9 Pathway',
+ 'Diploid + Chr12Amp':'Diploid + Chr12Amp',
+ 'TFS1':'$\it{TFS1}$',
+ 'IRA1 nonsense':'$\it{IRA1}$ $\it{nonsense}$',
+ 'RAS2':'$\it{RAS2}$',
+ 'IRA2':'$\it{IRA2}$',
+ 'Diploid':'Diploid',
+ 'High-fitness Diploid':'High-fitness Diploid',
+ 'Diploid + IRA2':'Diploid + $\it{IRA2}$',
+ 'GPB1':'$\it{GPB1}$',
+ 'SSK2':'$\it{SSK2}$'}
+
     highlight_colors =  ["#e41a1c","#377eb8","#4daf4a","#984ea3"]
 
     all_jitters = [tools.jitter_point(0) for i in range(1000)]
@@ -1792,9 +1815,10 @@ def Figure5_new(dataset_overall,dataset_examples,this_data,models,focal_conditio
                 
         
         plt.xlim(-0.5,len(interesting_conditions)*len(unique_genes)-0.5)
+        print(unique_names)
 
         if mm ==len(models)-1:
-            plt.xticks(range(len(interesting_conditions)*len(unique_genes)),np.tile(unique_names,len(interesting_conditions)),rotation=90)
+            plt.xticks(range(len(interesting_conditions)*len(unique_genes)),[gene_label_names[name] for name in np.tile(unique_names,len(interesting_conditions))],rotation=90)
             plt.xlabel('Mutation Type')
         else:
             plt.xticks(range(len(interesting_conditions)*len(unique_genes)),[],rotation=90)
