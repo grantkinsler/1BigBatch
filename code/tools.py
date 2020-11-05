@@ -56,8 +56,8 @@ renamed_conditions = {
                   # '1BB_8.5uMGdA' :'+ 8.5uM GdA(8)',
                     '1BB_8.5uMGdA' :'8.5 \u03BCM GdA (B9)',
                   '1BB_17uMGdA' :'17 \u03BCM GdA',
-                  '1BB_2ugFlu' :'2 \u03BCg Flu',
-                  '1BB_0.5ugFlu' :'0.5 \u03BCg Flu',
+                  '1BB_2ugFlu' :'2 \u03BCg/ml Flu',
+                  '1BB_0.5ugFlu' :'0.5 \u03BCg/ml Flu',
                   '1BB_1%Raf' :'1% Raf',
                   '1BB_0.5%Raf' :'0.5% Raf',
                   '1BB_1%Gly' :'1% Gly',
@@ -1839,6 +1839,44 @@ def improvements_component_by_condition_leaveout(dataset,this_data,full_model=ra
 
     return np.asarray(ve_improvements_adding)
 
+def svd_noise_detection(this_f,err,n_pulls,permutation=False):
+    
+    U, s, V = np.linalg.svd(this_f)
+    
+    max_d = min(this_f.shape)
+
+    if type(err) != np.float:
+        error = err.flatten()
+    else:
+        error = [err for i in range(len(this_f.flatten()))]
+
+    # SVD on error alone
+    noise_s_list = []
+    perm_s_list = []
+    for i in range(n_pulls):
+        # this_set = np.asarray([np.random.normal(0,np.sqrt(error[i])) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+        this_set = np.asarray([np.random.normal(0,error[i]) for i in range(len(this_f.flatten()))]).reshape(this_f.shape[0],this_f.shape[1])
+
+        U, noise_s, V = np.linalg.svd(this_set)
+        noise_s_list.append(noise_s)
+
+    if permutation:
+        for i in range(n_pulls):
+            this_set = np.random.permutation(this_f.ravel()).reshape(this_f.shape[0],this_f.shape[1])
+            U, perm_s, V = np.linalg.svd(this_set)
+            perm_s_list.append(perm_s)
+
+    # Mean empirical noise max
+    mean_noise_max = np.mean(noise_s_list,axis=0)[0] 
+    print(mean_noise_max)
+    print(mean_noise_max**2/np.sum(np.square(s)))
+    # print(mean_noise_max**2/np.sum(np.square(s))
+
+    max_detected = np.where(s < mean_noise_max)[0][0]
+    max_s = s[max_detected-1]**2/np.sum(np.square(s))
+    next_s = s[max_detected]**2/np.sum(np.square(s))
+
+    return max_detected, s, np.square(s)/np.sum(np.square(s))
 
 
 

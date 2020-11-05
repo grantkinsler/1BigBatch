@@ -196,6 +196,149 @@ def fitness_featured_genes_figure(ax,this_data,minimal_training_bcs,minimal_test
 
     return ax
 
+# def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3_conditions,m3_assoc,nonm3_assoc,gene_list,
+#     ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=12,style='default',side_bars=True,faded_alpha=0.3):
+
+#     if style == 'dark':
+#         plt.style.use('dark_background')
+#         faded_alpha = 0.3
+#         emph_alpha = 0.9
+#         guide_color = 'lightgray'
+#         guide_alpha=0.12
+#         below_color = 'w'
+#     else:
+#         faded_alpha = faded_alpha
+#         emph_alpha = 0.8
+#         guide_color = 'gray'
+#         guide_alpha = 0.07
+
+#     mutant_data = this_data[this_data['barcode'].isin(bc_list)]
+
+#     offset = {'IRA1_nonsense':0,
+#               'IRA1_missense':0.1/3,
+#               'Diploid':0,
+#               'GPB2':0.2/3,
+#               'PDE2':0.3/3,}
+              
+#     this_gene_data = mutant_data[mutant_data['mutation_type'].isin(gene_list)]
+
+#     this_gene_locs = np.where(np.isin(mutant_data['barcode'].values,this_gene_data['barcode'].values))[0]
+#     jitters = [tools.jitter_point(0,0.01) for bc in range(len(this_gene_data[m3_conditions[0]].values)) ]
+
+#     all_conditions = list(m3_conditions) + list(nonm3_conditions)
+#     print(all_conditions)
+
+#     plt.ylim(ymin,ymax)
+
+#     plt.axvline(x=len(m3_conditions)+0.5,color='gray',lw=1.0)
+
+#     plt.axhline(y=0.0,color='k',linestyle=':',alpha=0.2)
+
+#     ### groupings by condition
+#     all_assoc = m3_assoc + nonm3_assoc
+
+#     unique_out = np.unique(all_assoc,return_index=True,return_counts=True)
+
+#     assoc_names = np.asarray(all_assoc)[np.sort(unique_out[1])]
+#     assoc_counts = unique_out[2][np.argsort(unique_out[1])]
+#     cum_counts = np.cumsum(assoc_counts)
+
+#     x_tick_locs = []
+#     for i in range(len(assoc_names)):
+#         if (i % 2) == 0:
+#             # print(i)
+#             rect = matplotlib.patches.Rectangle((1+(cum_counts[i]-assoc_counts[i])-0.5,ymin),assoc_counts[i],ymax-ymin,
+#                                             linewidth=0,edgecolor=guide_color,facecolor=guide_color,alpha=guide_alpha)
+        
+#             ax.add_patch(rect)
+#         x_tick_locs.append((cum_counts[i]-0.5*assoc_counts[i]+0.5))
+
+#     # 2 sigma rectangles in background
+#     for gene in gene_list:
+        
+#         mean = mean_std_bygene[gene][0]
+#         twosigma_top = mean_std_bygene[gene][0]+2*mean_std_bygene[gene][1]
+#         twosigma_bottom = mean_std_bygene[gene][0]-2*mean_std_bygene[gene][1]
+        
+#         # print(gene,twosigma_bottom,twosigma_top,twosigma_top-twosigma_bottom)
+#         diff = twosigma_top - twosigma_bottom
+        
+        
+#         plt.axhline(twosigma_top,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
+#         plt.axhline(twosigma_bottom,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
+#         rect = matplotlib.patches.Rectangle((0,twosigma_bottom),len(all_conditions)+2,twosigma_top-twosigma_bottom,
+#                                             linewidth=1,edgecolor=mutant_colorset[gene],facecolor=mutant_colorset[gene],alpha=0.02)
+        
+#         ax.add_patch(rect)
+        
+#         diff_transform = ax.transData.transform((0.5, diff))
+
+#         if side_bars:
+        
+#             trans = matplotlib.transforms.blended_transform_factory(ax.transAxes, ax.transData)
+
+#             tops = ax.transData.transform((0,ymax))
+#             bottoms = ax.transData.transform((0,ymin))
+#             y_diff = tops[1]-bottoms[1]
+
+#             # ax.annotate("", xy=(1.025+offset[gene], mean), xytext=(1.04+offset[gene], mean),xycoords=trans,
+#             #         arrowprops=dict(arrowstyle=f'-[, widthB={diff}, lengthB=0.1,angleB=0',mutation_scale=4*10*1.25,lw=2.0,color=mutant_colorset[gene]))
+#             width = diff/(ymax-ymin)*y_diff/2
+
+
+
+#             ax.annotate("", xy=(1.025+offset[gene], mean), xytext=(1.04+offset[gene], mean),xycoords=trans,
+#                 arrowprops=dict(arrowstyle=f'-[, widthB={width}, lengthB=4,angleB=0',mutation_scale=1, lw=2.0,color=mutant_colorset[gene]))
+
+
+
+
+#     low_counter = 0   
+#     for g,gene in enumerate(gene_list):
+#         mean = mean_std_bygene[gene][0]
+#         twosigma_top = mean_std_bygene[gene][0]+2*mean_std_bygene[gene][1]
+#         twosigma_bottom = mean_std_bygene[gene][0]-2*mean_std_bygene[gene][1]
+        
+#         this_gene_data = mutant_data[mutant_data['mutation_type']==gene]
+
+#         # data = np.median(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+#         for col in all_conditions:
+#             if col not in this_gene_data.columns:
+#                 print(col)
+#         data = np.mean(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+#         uncertainty = np.std(np.asarray([this_gene_data[col].values for col in all_conditions]),axis=1)
+       
+#         colors = [matplotlib.colors.to_rgba(mutant_colorset[gene]) for i in range(len(data))]
+#         colors = [item[:3]+(faded_alpha,) if twosigma_bottom < data[i] < twosigma_top else item[:3]+(emph_alpha,) for i,item in enumerate(colors) ]
+        
+        
+#         plt.scatter(range(1,len(all_conditions)+1),data,marker='o',color=colors,label=gene)
+
+#         toolow = np.where(data<ymin)[0]
+#         for entry in toolow:
+#             plt.annotate("", xy=(entry+1, ymin+0.2*(low_counter)), xytext=(entry+1, ymin+0.2+0.2*(low_counter)),arrowprops=dict(arrowstyle="->",lw=1.5,color=mutant_colorset[gene]))
+#         if len(toolow) > 0:    
+#             low_counter += 1
+#     plt.xticks(x_tick_locs,[col.split('_fitness')[0] for col in assoc_names],rotation=90)
+#     # plt.xticks(x_tick_locs,[renamed_conditions[col.split('_fitness')[0]] for col in assoc_names],rotation=90)
+#     plt.ylim(ymin,ymax)
+#     plt.xlim(0.5,len(all_conditions)+0.5)
+#     plt.yticks(np.linspace(ymin,ymax,12),np.linspace(ymin,ymax,12))
+
+#     if legend:
+#         legend_split = np.ceil(len(gene_list)/legend_cols)
+#         for g,gene in enumerate(gene_list):
+#             x_loc = 0.01+np.floor((g)/legend_split)*0.3
+#             y_loc = 0.05*(legend_split-1)-0.05*(g%legend_split)+0.02
+#             plt.text(s=f"{gene.replace('_',' ')}",x=x_loc,y=y_loc,fontsize=fontsize,
+#                   fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
+
+
+#     plt.ylabel('Relative Fitness')
+#     plt.xlabel('Environment')
+
+#     return ax
+
 def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3_conditions,m3_assoc,nonm3_assoc,gene_list,
     ymin=-1.25,ymax=1.5,yticknum=12,legend=True,legend_cols=1,fontsize=12,style='default',side_bars=True,faded_alpha=0.3):
 
@@ -253,45 +396,6 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
             ax.add_patch(rect)
         x_tick_locs.append((cum_counts[i]-0.5*assoc_counts[i]+0.5))
 
-    # 2 sigma rectangles in background
-    for gene in gene_list:
-        
-        mean = mean_std_bygene[gene][0]
-        twosigma_top = mean_std_bygene[gene][0]+2*mean_std_bygene[gene][1]
-        twosigma_bottom = mean_std_bygene[gene][0]-2*mean_std_bygene[gene][1]
-        
-        # print(gene,twosigma_bottom,twosigma_top,twosigma_top-twosigma_bottom)
-        diff = twosigma_top - twosigma_bottom
-        
-        
-        plt.axhline(twosigma_top,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
-        plt.axhline(twosigma_bottom,color=mutant_colorset[gene],linewidth=1.0,alpha=0.05)
-        rect = matplotlib.patches.Rectangle((0,twosigma_bottom),len(all_conditions)+2,twosigma_top-twosigma_bottom,
-                                            linewidth=1,edgecolor=mutant_colorset[gene],facecolor=mutant_colorset[gene],alpha=0.02)
-        
-        ax.add_patch(rect)
-        
-        diff_transform = ax.transData.transform((0.5, diff))
-
-        if side_bars:
-        
-            trans = matplotlib.transforms.blended_transform_factory(ax.transAxes, ax.transData)
-
-            tops = ax.transData.transform((0,ymax))
-            bottoms = ax.transData.transform((0,ymin))
-            y_diff = tops[1]-bottoms[1]
-
-            # ax.annotate("", xy=(1.025+offset[gene], mean), xytext=(1.04+offset[gene], mean),xycoords=trans,
-            #         arrowprops=dict(arrowstyle=f'-[, widthB={diff}, lengthB=0.1,angleB=0',mutation_scale=4*10*1.25,lw=2.0,color=mutant_colorset[gene]))
-            width = diff/(ymax-ymin)*y_diff/2
-
-
-
-            ax.annotate("", xy=(1.025+offset[gene], mean), xytext=(1.04+offset[gene], mean),xycoords=trans,
-                arrowprops=dict(arrowstyle=f'-[, widthB={width}, lengthB=4,angleB=0',mutation_scale=1, lw=2.0,color=mutant_colorset[gene]))
-
-
-
 
     low_counter = 0   
     for g,gene in enumerate(gene_list):
@@ -319,7 +423,7 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
             plt.annotate("", xy=(entry+1, ymin+0.2*(low_counter)), xytext=(entry+1, ymin+0.2+0.2*(low_counter)),arrowprops=dict(arrowstyle="->",lw=1.5,color=mutant_colorset[gene]))
         if len(toolow) > 0:    
             low_counter += 1
-    plt.xticks(x_tick_locs,[col.split('_fitness')[0] for col in assoc_names],rotation=90)
+    plt.xticks(x_tick_locs,[renamed_conditions[col.split('_fitness')[0]] for col in assoc_names],rotation=90)
     # plt.xticks(x_tick_locs,[renamed_conditions[col.split('_fitness')[0]] for col in assoc_names],rotation=90)
     plt.ylim(ymin,ymax)
     plt.xlim(0.5,len(all_conditions)+0.5)
@@ -334,8 +438,21 @@ def fitness_tubes_graph_replicates(ax,this_data,mean_std_bygene,bc_list,m3_condi
                   fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
 
 
-    plt.ylabel('Relative Fitness')
+    plt.ylabel('Fitness advantage relative to Ancestor ($\it{s}$ per cycle)')
     plt.xlabel('Environment')
+
+    arrow_left = ax.transData.transform_point((2, 0))
+    arrow_right = ax.transData.transform_point((len(m3_conditions)-1, 0))
+
+    arrow_width = (arrow_right[0]-arrow_left[0])/2
+    # print(arrow_left,arrow_right,arrow_width)
+
+    trans_arrow = matplotlib.transforms.blended_transform_factory(ax.transData, ax.transData)
+
+
+    plt.annotate('Batches of the Evolution Condition', xy=(len(m3_conditions)/2+0.5, -1.65), xytext=(len(m3_conditions)/2+0.5, -1.75), 
+        fontsize=10,ha='center', va='top',xycoords=trans_arrow,annotation_clip=False,
+        arrowprops=dict(arrowstyle=f'-[, widthB={arrow_width}, lengthB=7.0', lw=1.0,mutation_scale=1.0))
 
     return ax
 
@@ -475,6 +592,7 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
 
         toolow = np.where(data<ymin)[0]
         for entry in toolow:
+            print('too low',gene,all_conditions[entry],data[entry])
             plt.annotate("", xy=(entry+1, ymin+0.2*(low_counter)), xytext=(entry+1, ymin+0.2+0.2*(low_counter)),arrowprops=dict(arrowstyle="->",lw=1.5,color=mutant_colorset[gene]))
         if len(toolow) > 0:    
             low_counter += 1
@@ -495,7 +613,7 @@ def fitness_tubes_graph(ax,this_data,mean_std_bygene,bc_list,m3_conditions,nonm3
                   fontweight='semibold',color=mutant_colorset[gene],transform=ax.transAxes)
 
 
-    plt.ylabel('Relative Fitness')
+    plt.ylabel('Fitness advantage relative to Ancestor ($\it{s}$ per cycle)')
     plt.xlabel('Environment')
 
 
@@ -1624,7 +1742,7 @@ def Figure5_new(dataset_overall,dataset_examples,this_data,models,focal_conditio
  'RAS2':'$\it{RAS2}$',
  'IRA2':'$\it{IRA2}$',
  'Diploid':'Diploid',
- 'High-fitness Diploid':'High-fitness Diploid',
+ 'High-fitness Diploid':"Diploid w/ add'l mutation",
  'Diploid + IRA2':'Diploid + $\it{IRA2}$',
  'GPB1':'$\it{GPB1}$',
  'SSK2':'$\it{SSK2}$'}
@@ -1703,20 +1821,24 @@ def Figure5_new(dataset_overall,dataset_examples,this_data,models,focal_conditio
     cutoff = 5
     improvement_delta(top_right,ve_improvements,cutoff,train_conditions,test_conditions,focal_conditions,contrast_condition,contrast_color,jitters=c_jitters,style=style,show_condition_names=True)
     right_ymin,right_ymax = plt.ylim()
+    
+    plt.title('Magnification')
+
     plt.tight_layout()
+
 
     end = len(ve_improvements[0,:])+1
 
     if box_annotation:
         rect = matplotlib.patches.Rectangle((cutoff-0.5,right_ymin),end-(1+cutoff),right_ymax-right_ymin,
-                                            linewidth=2,edgecolor='gray',facecolor='white',alpha=0.2)
+                                            linewidth=2,edgecolor='#525252',facecolor='white',alpha=0.3)
 
         top_left.add_patch(rect)
 
         con1 = ConnectionPatch(xyB=(1+cutoff-0.5+end-(2+cutoff),right_ymax), xyA=(0,1), coordsA="axes fraction", coordsB="data",
-                              axesA=top_right, axesB=top_left, color="gray",alpha=0.2,linewidth=2)
+                              axesA=top_right, axesB=top_left, color="#525252",alpha=0.3,linewidth=2)
         con2 = ConnectionPatch(xyB=(1+cutoff-0.5+end-(2+cutoff),right_ymin), xyA=(0,0), coordsA="axes fraction", coordsB="data",
-                              axesA=top_right, axesB=top_left, color="gray",alpha=0.2,linewidth=2)
+                              axesA=top_right, axesB=top_left, color="#525252",alpha=0.3,linewidth=2)
         top_right.add_artist(con1)
         top_right.add_artist(con2)
 
